@@ -1,0 +1,151 @@
+{
+  "images": 351,
+  "candle_count_exact_pct": 84.9,
+  "ocr_calibrated_pct": 99.7,
+  "mean_close_mape_pct": 0.064,
+  "median_close_mape_pct": 0.044,
+  "mean_err_pct_of_range": 0.307,
+  "failed_images": 0,
+  "direction_acc_pct": 99.71,
+  "mean_return_corr": 0.9969,
+  "mean_ms_per_image": 2119.2,
+  "by_renderer": [
+    {
+      "renderer": "mpf-binance",
+      "count_exact": 0.963,
+      "ocr": 1.0,
+      "close_mape": 0.0629,
+      "direction": 99.976
+    },
+    {
+      "renderer": "mpf-binancedark",
+      "count_exact": 0.9259,
+      "ocr": 1.0,
+      "close_mape": 0.0901,
+      "direction": 99.9556
+    },
+    {
+      "renderer": "mpf-binancedark+vol",
+      "count_exact": 0.8148,
+      "ocr": 1.0,
+      "close_mape": 0.1161,
+      "direction": 99.9432
+    },
+    {
+      "renderer": "mpf-charles",
+      "count_exact": 0.963,
+      "ocr": 1.0,
+      "close_mape": 0.0579,
+      "direction": 100.0
+    },
+    {
+      "renderer": "mpf-classic",
+      "count_exact": 0.5556,
+      "ocr": 1.0,
+      "close_mape": 0.0831,
+      "direction": 97.5648
+    },
+    {
+      "renderer": "mpf-nightclouds",
+      "count_exact": 0.6667,
+      "ocr": 0.963,
+      "close_mape": 0.0683,
+      "direction": 97.419
+    },
+    {
+      "renderer": "mpf-tradingview",
+      "count_exact": 0.9259,
+      "ocr": 1.0,
+      "close_mape": 0.0474,
+      "direction": 100.0
+    },
+    {
+      "renderer": "mpf-yahoo",
+      "count_exact": 0.963,
+      "ocr": 1.0,
+      "close_mape": 0.0395,
+      "direction": 99.9519
+    },
+    {
+      "renderer": "mpf-yahoo+vol",
+      "count_exact": 0.963,
+      "ocr": 1.0,
+      "close_mape": 0.0617,
+      "direction": 99.976
+    },
+    {
+      "renderer": "rapos-classic",
+      "count_exact": 0.8148,
+      "ocr": 1.0,
+      "close_mape": 0.0495,
+      "direction": 100.0
+    },
+    {
+      "renderer": "rapos-dark",
+      "count_exact": 0.7778,
+      "ocr": 1.0,
+      "close_mape": 0.0493,
+      "direction": 100.0
+    },
+    {
+      "renderer": "rapos-light",
+      "count_exact": 0.9259,
+      "ocr": 1.0,
+      "close_mape": 0.0653,
+      "direction": 100.0
+    },
+    {
+      "renderer": "rapos-midnight",
+      "count_exact": 0.7778,
+      "ocr": 1.0,
+      "close_mape": 0.0496,
+      "direction": 100.0
+    }
+  ],
+  "by_degradation": [
+    {
+      "degradation": "jpeg",
+      "count_exact": 0.7436,
+      "ocr": 1.0,
+      "close_mape": 0.0496,
+      "direction": 99.8547
+    },
+    {
+      "degradation": "none",
+      "count_exact": 0.9829,
+      "ocr": 1.0,
+      "close_mape": 0.0777,
+      "direction": 99.4837
+    },
+    {
+      "degradation": "resize",
+      "count_exact": 0.8205,
+      "ocr": 0.9915,
+      "close_mape": 0.0603,
+      "direction": 99.8351
+    }
+  ],
+  "by_n_candles": [
+    {
+      "n": 40,
+      "count_exact": 0.9829,
+      "ocr": 1.0,
+      "close_mape": 0.0325,
+      "direction": 99.9783
+    },
+    {
+      "n": 90,
+      "count_exact": 0.9573,
+      "ocr": 1.0,
+      "close_mape": 0.0472,
+      "direction": 99.7123
+    },
+    {
+      "n": 160,
+      "count_exact": 0.6068,
+      "ocr": 0.9915,
+      "close_mape": 0.1411,
+      "direction": 99.2518
+    }
+  ]
+}

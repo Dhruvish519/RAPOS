@@ -1,4 +1,81 @@
-# 🎉 RAPOS Frontend - Complete Implementation Guide
+# RAPOS: Risk-Aware Portfolio Optimisation System
+
+RAPOS is a portfolio web app with an AI backend. Version 3 adds two modules:
+
+| Module | What it does | Where |
+|---|---|---|
+| **Chart Vision** (OpenCV) | Reads a screenshot of any candlestick chart and rebuilds the OHLC price data, then scores its risk | `backend/cv/`, `chart-vision.html` |
+| **Portfolio Optimiser** | Mean-variance (Markowitz) optimisation with an efficient frontier, replacing the old fixed allocation table | `backend/optimizer.py`, `optimizer.html` |
+
+## Chart Vision pipeline
+
+1. **Background**: the median colour of the image border gives the theme (light/dark).
+2. **Colour masks**: HSV thresholds isolate rising (green) and falling (red) candles; tiny connected components are removed. Thin coloured horizontal lines (e.g. a dotted "last price" line) and volume histograms (bars standing on one shared baseline) are erased.
+3. **Grid and plot area**: morphological opening with long line kernels finds gridlines; lines spanning most of the chart define the plot rectangle.
+4. **Candles**: column-occupancy runs give each candle's x-extent; merged neighbours are split at profile minima; text-like blobs are rejected. The row-width profile separates the wide body from the thin wick. Grey wicks are traced through contrast, and evenly spaced gaps are checked for faint doji candles.
+5. **Other colour schemes**: if the chart isn't green/red, candles are found by contrast, hollow bodies are filled, body colours are clustered (k-means in Lab), and which cluster means "up" is decided by price continuity (a candle usually opens near the previous close).
+6. **Price axis**: each axis label is located and read with Tesseract OCR at a fixed text height (voting across two sizes); a RANSAC-style linear fit maps pixel rows to prices. If OCR isn't available, the user enters the chart's high and low prices.
+7. **Analysis**: volatility, drawdown, trend, AI risk score and an LSTM signal on the extracted closes.
+
+`python -m cv.evaluate` (from `backend/`) benchmarks the digitiser against ground truth across 13 chart styles (including the independent `mplfinance` library), 3 densities and JPEG/resize degradation. Results go to `backend/cv/results/`.
+
+**Benchmark (351 images, 13 styles, 3 densities, clean/JPEG/resized):**
+
+| Metric | Result |
+|---|---|
+| Images processed without error | 351 / 351 |
+| Price axis read by OCR | 99.7% |
+| Mean close-price error (when candle count exact) | 0.064% (95th percentile 0.19%, max 0.82%) |
+| Up/down direction correct | 99.7% |
+| Correlation of extracted vs true returns | 0.997 |
+| Exact candle count, 40 / 90 / 160 candles, clean image | 100% / 100% / 95% |
+| Exact candle count, 40 / 90 / 160 candles, JPEG | 95% / 87% / 41% |
+| Mean time per image | 2.1 s |
+
+## Optimiser
+
+- Expected returns: annualised mean daily returns, shrunk toward the cross-asset average by 252/(n+252) for n observations, so short histories are trusted less.
+- Covariance: Ledoit-Wolf shrinkage.
+- Portfolios (long-only, optional per-asset cap): minimum variance, maximum Sharpe, and the risk-profile portfolio (highest return at the profile's target volatility: Conservative 5%, Moderate 10%, Aggressive 18%).
+- Assets read by Chart Vision can be added to the optimisation ("Add to optimiser").
+- The built-in universe (`backend/data/asset_universe.csv`, made by `generate_asset_universe.py`) is **simulated** data calibrated to typical long-run asset-class returns, volatilities and correlations.
+
+## API (v3)
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/digitize-chart` | multipart `image` (+ optional `price_high`, `price_low`, `interval`) → candles, overlay image, risk analysis |
+| GET | `/api/optimize?profile=&risk_free=&max_weight=` | optimise the built-in universe |
+| POST | `/api/optimize` | same, with `custom_assets: [{name, closes}]` |
+| POST | `/api/analyze-series` | risk metrics + LSTM signal for a list of closes |
+| GET | `/api/rebalance` | dashboard rebalancer (unchanged response format, now optimiser-backed) |
+| GET | `/api/health` | service, OCR, model and market-data status |
+
+## Run locally
+
+```bash
+cd backend
+pip install -r requirements.txt        # plus the Tesseract binary for axis OCR (apt install tesseract-ocr / brew install tesseract)
+export FINNHUB_API_KEY=your_key         # optional, for live prices and news
+uvicorn main:app --reload               # http://localhost:8000/docs
+python -m pytest -q                     # 18 tests
+```
+
+Serve the frontend from the repo root (e.g. `python -m http.server 5500`) and open `chart-vision.html` or `optimizer.html`. Pages served from localhost use the local backend automatically; add `?api=https://...` to point elsewhere.
+
+**Deploying with OCR**: Render's native Python environment has no Tesseract. Deploy `backend/` with the included `Dockerfile` (Render → Docker runtime) to enable axis OCR; otherwise Chart Vision asks for the high/low prices.
+
+**API key**: set `FINNHUB_API_KEY` as an environment variable. Never commit keys.
+
+## Known limitations
+
+- Very dense charts (more than ~120 candles across a normal screenshot) combined with JPEG compression can miss or merge a few candles; the app warns and suggests zooming in.
+- Line charts, Heikin-Ashi and bar (OHLC tick) charts are not supported.
+- The LSTM next-close signal does not beat a "no change" baseline on random-walk data; RAPOS shows both and treats it as experimental. The volatility-based risk metrics carry the useful information.
+
+---
+
+# Frontend implementation guide (v2)
 
 ## Overview
 This is the complete frontend implementation of the **Risk-Aware Portfolio Optimisation System (RAPOS)** - a modern, fully-responsive web application for portfolio management and investment optimization.

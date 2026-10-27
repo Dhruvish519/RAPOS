@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAPOS | Portfolio Optimiser</title>
+    <link rel="stylesheet" href="s1.css">
+    <link rel="stylesheet" href="css/tools.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="js/rapos-config.js"></script>
+</head>
+<body>
+<div class="tool-shell">
+    <aside class="sidebar">
+        <div class="sidebar-logo">RAPOS</div>
+        <nav class="sidebar-nav">
+            <a class="sidebar-item" href="dashboard.html" style="text-decoration:none"><i class="fas fa-sparkles"></i><span class="lbl">Intelligence Hub</span></a>
+            <a class="sidebar-item" href="chart-vision.html" style="text-decoration:none"><i class="fas fa-eye"></i><span class="lbl">Chart Vision</span></a>
+            <a class="sidebar-item active" href="optimizer.html" style="text-decoration:none"><i class="fas fa-chart-pie"></i><span class="lbl">Portfolio Optimiser</span></a>
+        </nav>
+    </aside>
+
+    <main class="tool-main">
+        <header class="tool-header">
+            <div>
+                <h1 class="text-gradient">Portfolio Optimiser</h1>
+                <p>Mean-variance (Markowitz) optimisation: the highest expected return for the risk your profile allows, with the efficient frontier for context.</p>
+            </div>
+            <div class="segmented" id="profiles" role="tablist">
+                <button data-p="Conservative">Conservative</button>
+                <button data-p="Moderate" class="active">Moderate</button>
+                <button data-p="Aggressive">Aggressive</button>
+            </div>
+        </header>
+
+        <div class="tool-grid">
+            <section class="card span-12" style="padding:24px 32px">
+                <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap;">
+                    <div style="min-width:160px">
+                        <label class="field-label" for="rf" style="margin-top:0">Risk-free rate</label>
+                        <select id="rf" class="input-field compact">
+                            <option value="0.02">2%</option><option value="0.04" selected>4%</option><option value="0.06">6%</option><option value="0.065">6.5% (India T-bill)</option>
+                        </select>
+                    </div>
+                    <div style="min-width:160px">
+                        <label class="field-label" for="cap" style="margin-top:0">Max per asset</label>
+                        <select id="cap" class="input-field compact">
+                            <option value="0.4">40%</option><option value="0.6" selected>60%</option><option value="1">No cap</option>
+                        </select>
+                    </div>
+                    <div id="customChip" class="hidden" style="flex:1; min-width:220px"></div>
+                    <div class="muted small" style="margin-left:auto; max-width:360px; line-height:1.5" id="dataNote"></div>
+                </div>
+            </section>
+
+            <section class="card span-12">
+                <div class="metrics" id="headline"></div>
+                <div id="err"></div>
+            </section>
+
+            <section class="card span-5">
+                <div class="card-title"><i class="fas fa-chart-pie" style="color:var(--brand-primary)"></i> Recommended allocation</div>
+                <div class="chart-box" style="height:240px"><canvas id="donut"></canvas></div>
+                <table class="wtable" style="margin-top:20px">
+                    <thead><tr><th>Asset</th><th style="text-align:right">Weight</th><th>Share of risk</th></tr></thead>
+                    <tbody id="wbody"></tbody>
+                </table>
+            </section>
+
+            <section class="card span-7">
+                <div class="card-title"><i class="fas fa-bezier-curve" style="color:var(--brand-secondary)"></i> Efficient frontier</div>
+                <div class="chart-box" style="height:420px"><canvas id="frontier"></canvas></div>
+                <p class="muted small" style="margin-top:12px; line-height:1.5">Each point on the curve is the lowest-risk portfolio for its return. Dots are single assets; diamonds are the optimised portfolios.</p>
+            </section>
+
+            <section class="card span-6">
+                <div class="card-title"><i class="fas fa-scale-balanced"></i> Compare portfolios</div>
+                <table class="wtable"><thead><tr><th>Portfolio</th><th style="text-align:right">Return</th><th style="text-align:right">Volatility</th><th style="text-align:right">Sharpe</th></tr></thead>
+                    <tbody id="cmpBody"></tbody></table>
+            </section>
+
+            <section class="card span-6">
+                <div class="card-title"><i class="fas fa-table-cells"></i> Correlation between assets</div>
+                <div id="corr" style="overflow-x:auto"></div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+(() => {
+    const API = window.RAPOS_API_BASE;
+    const $ = id => document.getElementById(id);
+    const COLORS = ['#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#94a3b8', '#ec4899', '#22d3ee'];
+    const pct = (v, d = 1) => `${(v * 100).toFixed(d)}%`;
+    let profile = 'Moderate', custom = null, donut = null, frontier = null;
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = 'Inter, sans-serif';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+    // custom asset handed over from Chart Vision
+    if (new URLSearchParams(location.search).get('custom')) {
+        try { custom = JSON.parse(localStorage.getItem('rapos_custom_asset')); } catch (e) {}
+    }
+    function renderChip() {
+        $('customChip').classList.toggle('hidden', !custom);
+        if (!custom) return;
+        $('customChip').innerHTML = `<span class="pill ok" style="padding:10px 14px"><i class="fas fa-eye"></i> ${custom.name} from Chart Vision · ${custom.closes.length} days
+            <button id="rmCustom" title="Remove" style="background:none;border:0;color:inherit;cursor:pointer;margin-left:6px"><i class="fas fa-xmark"></i></button></span>`;
+        $('rmCustom').onclick = () => { custom = null; try { localStorage.removeItem('rapos_custom_asset'); } catch (e) {} history.replaceState(null, '', 'optimizer.html'); renderChip(); load(); };
+    }
+
+    document.querySelectorAll('#profiles button').forEach(b => b.addEventListener('click', () => {
+        profile = b.dataset.p;
+        document.querySelectorAll('#profiles button').forEach(x => x.classList.toggle('active', x === b));
+        load();
+    }));
+    $('rf').onchange = load; $('cap').onchange = load;
+
+    async function load() {
+        $('err').innerHTML = '';
+        $('headline').style.opacity = .5;
+        const rf = +$('rf').value, cap = +$('cap').value;
+        try {
+            let res;
+            if (custom) {
+                res = await fetch(`${API}/api/optimize`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile, risk_free: rf, max_weight: cap, custom_assets: [{ name: custom.name, closes: custom.closes }] }) });
+            } else {
+                res = await fetch(`${API}/api/optimize?profile=${profile}&risk_free=${rf}&max_weight=${cap}`);
+            }
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.detail || 'Optimisation failed');
+            render(d);
+        } catch (e) {
+            $('err').innerHTML = `<div class="notice err">${e.message === 'Failed to fetch' ? 'Could not reach the AI service. If it was idle it can take ~30 s to wake; try again.' : e.message}</div>`;
+        } finally { $('headline').style.opacity = 1; }
+    }
+
+    function render(d) {
+        const r = d.recommended;
+        $('dataNote').textContent = `${d.observations} daily observations · return shrinkage ${(d.return_shrinkage * 100).toFixed(0)}% (short histories are trusted less) · built-in universe is simulated data calibrated to typical asset-class behaviour.`;
+        $('headline').innerHTML = [
+            ['Expected return', pct(r.expected_return), 'per year'],
+            ['Volatility', pct(r.volatility), `target ${pct(d.target_volatility, 0)}`],
+            ['Sharpe ratio', r.sharpe.toFixed(2), `risk-free ${pct(d.risk_free, 1)}`],
+            ['Assets used', Object.values(r.weights).filter(w => w > 0.005).length, `of ${Object.keys(r.weights).length}`],
+        ].map(([k, v, s]) => `<div class="metric"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+
+        const names = Object.keys(r.weights);
+        const col = n => COLORS[names.indexOf(n) % COLORS.length];
+        const shown = names.filter(n => r.weights[n] > 0.0005);
+        if (donut) donut.destroy();
+        donut = new Chart($('donut'), { type: 'doughnut',
+            data: { labels: shown, datasets: [{ data: shown.map(n => r.weights[n] * 100), backgroundColor: shown.map(col), borderWidth: 0 }] },
+            options: { maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false },
+                tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw.toFixed(1)}%` } } } } });
+
+        $("wbody").innerHTML = [...names].sort((a, b) => r.weights[b] - r.weights[a]).map(n => `<tr>
+            <td><span class="dot" style="background:${col(n)}"></span>${n}</td>
+            <td class="num">${pct(r.weights[n])}</td>
+            <td><div style="display:flex;align-items:center;gap:10px"><div class="bar" style="flex:1"><i style="width:${Math.max(0, r.risk_contribution[n] * 100)}%"></i></div>
+                <span class="small" style="width:42px;text-align:right">${pct(Math.max(0, r.risk_contribution[n]), 0)}</span></div></td></tr>`).join('');
+
+        const pt = p => ({ x: p.volatility * 100, y: p.expected_return * 100 });
+        if (frontier) frontier.destroy();
+        frontier = new Chart($('frontier'), { type: 'scatter', data: { datasets: [
+            { label: 'Efficient frontier', data: d.frontier.map(f => ({ x: f.volatility * 100, y: f.return * 100 })), showLine: true, borderColor: '#06b6d4', backgroundColor: '#06b6d4', pointRadius: 0, borderWidth: 2.5, tension: .25 },
+            { label: 'Assets', data: d.assets.map(a => ({ x: a.volatility * 100, y: a.expected_return * 100, n: a.asset })), backgroundColor: d.assets.map(a => col(a.asset)), pointRadius: 6 },
+            { label: 'Min variance', data: [pt(d.min_variance)], backgroundColor: '#94a3b8', pointStyle: 'rectRot', pointRadius: 9 },
+            { label: 'Max Sharpe', data: [pt(d.max_sharpe)], backgroundColor: '#f59e0b', pointStyle: 'rectRot', pointRadius: 9 },
+            { label: `${d.profile} (yours)`, data: [pt(r)], backgroundColor: '#8b5cf6', borderColor: 'white', borderWidth: 2, pointStyle: 'rectRot', pointRadius: 12 },
+        ] }, options: { maintainAspectRatio: false,
+            scales: { x: { title: { display: true, text: 'Volatility (% per year)' }, min: 0 }, y: { title: { display: true, text: 'Expected return (% per year)' } } },
+            plugins: { legend: { labels: { usePointStyle: true, boxWidth: 8 } },
+                tooltip: { callbacks: { label: c => `${c.raw.n || c.dataset.label}: return ${c.raw.y.toFixed(1)}%, risk ${c.raw.x.toFixed(1)}%` } } } } });
+
+        $('cmpBody').innerHTML = [r, d.max_sharpe, d.min_variance].map(p => `<tr><td>${p.label}</td>
+            <td class="num">${pct(p.expected_return)}</td><td class="num">${pct(p.volatility)}</td><td class="num">${p.sharpe.toFixed(2)}</td></tr>`).join('');
+
+        // CASH has no variance, so its correlations are all zero: leave it out
+        const keep = d.correlation.assets.map((n, i) => n === 'CASH' ? -1 : i).filter(i => i >= 0);
+        const cn = keep.map(i => d.correlation.assets[i]);
+        const m = keep.map(i => keep.map(j => d.correlation.matrix[i][j]));
+        const cell = v => { const a = Math.abs(v); const c = v >= 0 ? `rgba(6,182,212,${a * .85})` : `rgba(239,68,68,${a * .85})`;
+            return `<td style="background:${c};text-align:center;padding:9px 6px;font-size:12px;font-weight:700;color:${a > .55 ? 'white' : '#cbd5e1'};border-radius:6px">${v.toFixed(2)}</td>`; };
+        $('corr').innerHTML = `<table style="border-collapse:separate;border-spacing:3px;width:100%"><tr><td></td>${cn.map(n => `<td class="small muted" style="text-align:center;font-weight:700">${n}</td>`).join('')}</tr>
+            ${m.map((row, i) => `<tr><td class="small muted" style="font-weight:700;padding-right:8px">${cn[i]}</td>${row.map(cell).join('')}</tr>`).join('')}</table>`;
+    }
+
+    renderChip();
+    load();
+})();
+</script>
+</body>
+</html>

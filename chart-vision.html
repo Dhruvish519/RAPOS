@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAPOS | Chart Vision</title>
+    <link rel="stylesheet" href="s1.css">
+    <link rel="stylesheet" href="css/tools.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="js/rapos-config.js"></script>
+</head>
+<body>
+<div class="tool-shell">
+    <aside class="sidebar">
+        <div class="sidebar-logo">RAPOS</div>
+        <nav class="sidebar-nav">
+            <a class="sidebar-item" href="dashboard.html" style="text-decoration:none"><i class="fas fa-sparkles"></i><span class="lbl">Intelligence Hub</span></a>
+            <a class="sidebar-item active" href="chart-vision.html" style="text-decoration:none"><i class="fas fa-eye"></i><span class="lbl">Chart Vision</span></a>
+            <a class="sidebar-item" href="optimizer.html" style="text-decoration:none"><i class="fas fa-chart-pie"></i><span class="lbl">Portfolio Optimiser</span></a>
+        </nav>
+    </aside>
+
+    <main class="tool-main">
+        <header class="tool-header">
+            <div>
+                <h1 class="text-gradient">Chart Vision</h1>
+                <p>Upload a screenshot of any candlestick chart. RAPOS reads every candle with computer vision, rebuilds the price data, and scores its risk.</p>
+            </div>
+            <span class="pill" id="apiStatus"><i class="fas fa-circle" style="font-size:8px"></i> Checking AI service…</span>
+        </header>
+
+        <div class="tool-grid">
+            <!-- Upload -->
+            <section class="card span-4">
+                <div class="card-title"><i class="fas fa-upload" style="color:var(--brand-primary)"></i> Chart image</div>
+                <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload chart image">
+                    <div id="dzEmpty">
+                        <i class="fas fa-image"></i>
+                        <strong>Drop a screenshot here</strong>
+                        <span class="muted small">or click to browse · paste with <kbd>Ctrl</kbd>+<kbd>V</kbd></span>
+                    </div>
+                    <img id="dzPreview" class="hidden" alt="Chart preview">
+                    <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" hidden>
+                </div>
+                <button class="btn btn-secondary" id="sampleBtn" style="width:100%; margin-top:12px;"><i class="fas fa-flask"></i> Use sample chart</button>
+
+                <label class="field-label" for="interval">Candle interval</label>
+                <select id="interval" class="input-field compact">
+                    <option value="1H">1 hour</option>
+                    <option value="4H">4 hours</option>
+                    <option value="1D" selected>1 day</option>
+                    <option value="1W">1 week</option>
+                    <option value="1M">1 month</option>
+                </select>
+
+                <details class="calib" id="calibBox">
+                    <summary>Set prices manually (optional)</summary>
+                    <p class="muted small" style="margin:10px 0 0; line-height:1.5">RAPOS reads the price axis automatically. If it can't, enter the highest and lowest wick prices visible on the chart.</p>
+                    <div class="field-row" style="margin-top:10px">
+                        <input id="priceHigh" type="number" step="any" class="input-field compact" placeholder="Highest price">
+                        <input id="priceLow" type="number" step="any" class="input-field compact" placeholder="Lowest price">
+                    </div>
+                </details>
+
+                <button class="btn btn-primary" id="analyseBtn" style="width:100%; margin-top:22px;" disabled>
+                    <i class="fas fa-wand-magic-sparkles"></i> <span>Read chart</span>
+                </button>
+                <div id="formMsg"></div>
+            </section>
+
+            <!-- Detection -->
+            <section class="card span-8">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+                    <div class="card-title" style="margin:0"><i class="fas fa-crosshairs" style="color:var(--brand-secondary)"></i> What the vision model sees</div>
+                    <div class="segmented hidden" id="viewToggle">
+                        <button class="active" data-view="overlay">Detected</button>
+                        <button data-view="original">Original</button>
+                        <button data-view="rebuilt">Rebuilt data</button>
+                    </div>
+                </div>
+                <div id="emptyState" class="muted" style="text-align:center; padding:70px 20px;">
+                    <i class="fas fa-chart-column" style="font-size:40px; opacity:.35; margin-bottom:16px; display:block"></i>
+                    Results appear here: every detected candle is boxed, with its high and low marked.
+                </div>
+                <div id="resultView" class="hidden">
+                    <div class="img-frame" id="overlayFrame"><img id="overlayImg" alt="Detected candles"></div>
+                    <div class="img-frame hidden" id="originalFrame"><img id="originalImg" alt="Original chart"></div>
+                    <div class="hidden" id="rebuiltFrame" style="background:rgba(2,6,23,.5); border:1px solid var(--border-glass); border-radius:18px; padding:12px;">
+                        <canvas id="rebuiltCanvas" style="width:100%; height:360px; display:block"></canvas>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;" id="detectPills"></div>
+                    <div id="warnings"></div>
+                </div>
+            </section>
+
+            <!-- Analysis -->
+            <section class="card span-12 hidden" id="analysisCard">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:22px;">
+                    <div class="card-title" style="margin:0"><i class="fas fa-shield-halved" style="color:var(--brand-primary)"></i> Risk analysis of the extracted prices</div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" id="csvBtn"><i class="fas fa-file-csv"></i> Download CSV</button>
+                        <button class="btn btn-primary" id="toOptBtn"><i class="fas fa-chart-pie"></i> Add to optimiser</button>
+                    </div>
+                </div>
+                <div class="metrics" id="metrics"></div>
+                <div id="lstmBox"></div>
+            </section>
+
+            <!-- Pipeline -->
+            <section class="card span-12">
+                <div class="card-title"><i class="fas fa-diagram-project"></i> How Chart Vision works</div>
+                <div class="steps">
+                    <div class="step"><b>Background</b><span>Border pixels give the theme (light/dark) and background colour.</span></div>
+                    <div class="step"><b>Colour masks</b><span>HSV thresholds isolate rising and falling candles; small specks are removed.</span></div>
+                    <div class="step"><b>Grid &amp; plot area</b><span>Morphological line filters find gridlines and the plot rectangle.</span></div>
+                    <div class="step"><b>Candles</b><span>Column runs split candles; row widths separate body from wick.</span></div>
+                    <div class="step"><b>Price axis</b><span>Tesseract OCR reads axis labels; a robust fit maps pixels to prices.</span></div>
+                    <div class="step"><b>Analysis</b><span>Volatility, drawdown, trend, risk score and an LSTM signal.</span></div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+(() => {
+    const API = window.RAPOS_API_BASE;
+    const $ = id => document.getElementById(id);
+    let file = null, lastResult = null;
+
+    // ---- service status --------------------------------------------------
+    fetch(`${API}/api/health`).then(r => r.json()).then(h => {
+        $('apiStatus').className = 'pill ok';
+        $('apiStatus').innerHTML = `<i class="fas fa-circle" style="font-size:8px"></i> AI service online${h.ocr ? '' : ' · axis OCR off'}`;
+        if (!h.ocr) $('calibBox').open = true;
+    }).catch(() => {
+        $('apiStatus').className = 'pill warn';
+        $('apiStatus').innerHTML = `<i class="fas fa-circle" style="font-size:8px"></i> AI service waking up…`;
+    });
+
+    // ---- file selection ----------------------------------------------------
+    const dz = $('dropzone');
+    function setFile(f) {
+        if (!f || !f.type.startsWith('image/')) { showMsg('Please choose a PNG, JPG or WebP image.', 'err'); return; }
+        if (f.size > 8 * 1024 * 1024) { showMsg('Image is larger than 8 MB.', 'err'); return; }
+        file = f;
+        const url = URL.createObjectURL(f);
+        $('dzPreview').src = url; $('originalImg').src = url;
+        $('dzPreview').classList.remove('hidden'); $('dzEmpty').classList.add('hidden');
+        $('analyseBtn').disabled = false; showMsg('');
+    }
+    dz.addEventListener('click', () => $('fileInput').click());
+    dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('fileInput').click(); } });
+    $('fileInput').addEventListener('change', e => setFile(e.target.files[0]));
+    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+    dz.addEventListener('drop', e => setFile(e.dataTransfer.files[0]));
+    window.addEventListener('paste', e => {
+        const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+        if (item) setFile(item.getAsFile());
+    });
+    $('sampleBtn').addEventListener('click', async () => {
+        const blob = await (await fetch('assets/sample_chart.png')).blob();
+        setFile(new File([blob], 'sample_chart.png', { type: 'image/png' }));
+    });
+
+    function showMsg(text, kind = 'info') {
+        $('formMsg').innerHTML = text ? `<div class="notice ${kind}">${text}</div>` : '';
+    }
+
+    // ---- analyse ---------------------------------------------------------
+    $('analyseBtn').addEventListener('click', async () => {
+        if (!file) return;
+        const hi = $('priceHigh').value, lo = $('priceLow').value;
+        if ((hi === '') !== (lo === '')) { showMsg('Enter both the highest and lowest price, or leave both empty.', 'err'); return; }
+        if (hi !== '' && +hi <= +lo) { showMsg('The highest price must be above the lowest price.', 'err'); return; }
+        const fd = new FormData();
+        fd.append('image', file);
+        fd.append('interval', $('interval').value);
+        if (hi !== '') { fd.append('price_high', hi); fd.append('price_low', lo); }
+
+        const btn = $('analyseBtn');
+        btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> <span>Reading candles…</span>';
+        showMsg('');
+        try {
+            const res = await fetch(`${API}/api/digitize-chart`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Could not read this chart.');
+            lastResult = data; render(data);
+        } catch (err) {
+            showMsg(err.message === 'Failed to fetch'
+                ? 'Could not reach the AI service. If it was idle it may take ~30 s to wake up; try again.'
+                : err.message, 'err');
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> <span>Read chart</span>';
+        }
+    });
+
+    // ---- views -------------------------------------------------------------
+    document.querySelectorAll('#viewToggle button').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#viewToggle button').forEach(x => x.classList.toggle('active', x === b));
+        $('overlayFrame').classList.toggle('hidden', b.dataset.view !== 'overlay');
+        $('originalFrame').classList.toggle('hidden', b.dataset.view !== 'original');
+        $('rebuiltFrame').classList.toggle('hidden', b.dataset.view !== 'rebuilt');
+        if (b.dataset.view === 'rebuilt' && lastResult) drawCandles(lastResult.candles);
+    }));
+
+    const fmt = (v, d = 2) => v == null ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+
+    function render(d) {
+        $('emptyState').classList.add('hidden');
+        $('resultView').classList.remove('hidden');
+        $('viewToggle').classList.remove('hidden');
+        $('overlayImg').src = d.overlay;
+        const s = d.summary, cal = s.calibration.method;
+        const calLabel = { ocr: 'Price axis read by OCR', manual: 'Prices from your input', relative: 'Prices not calibrated' }[cal];
+        $('detectPills').innerHTML = [
+            `<span class="pill ok"><i class="fas fa-check"></i> ${s.n_candles} candles</span>`,
+            `<span class="pill ${cal === 'relative' ? 'warn' : 'ok'}"><i class="fas fa-ruler-vertical"></i> ${calLabel}</span>`,
+            `<span class="pill">${s.theme} theme</span>`,
+            `<span class="pill">${s.colour_mode === 'green-red' ? 'Green / red candles' : 'Two-colour candles'}</span>`,
+            `<span class="pill">${s.n_gridlines} gridlines</span>`,
+        ].join('');
+        $('warnings').innerHTML = s.warnings.map(w => `<div class="notice">${w}</div>`).join('');
+        if (cal === 'relative') $('calibBox').open = true;
+
+        const a = d.analysis;
+        $('analysisCard').classList.toggle('hidden', !a);
+        if (!a) return;
+        const ret = a.period_return_pct;
+        $('metrics').innerHTML = [
+            ['AI risk score', `${fmt(a.ai_risk_score, 1)}<span class="muted" style="font-size:16px">/10</span>`, `${a.risk_band} risk`],
+            ['Last close', fmt(a.last_close), `${a.n_points} candles · ${a.interval}`],
+            ['Period return', `<span class="${ret >= 0 ? 'up' : 'down'}">${ret >= 0 ? '+' : ''}${fmt(ret)}%</span>`, 'first to last close'],
+            ['Volatility', `${fmt(a.annualised_volatility_pct, 1)}%`, 'annualised'],
+            ['Max drawdown', `<span class="down">${fmt(a.max_drawdown_pct, 1)}%</span>`, 'peak to trough'],
+            ['Trend', a.trend, `${a.trend_pct_per_candle >= 0 ? '+' : ''}${fmt(a.trend_pct_per_candle, 3)}% per candle`],
+        ].map(([k, v, sub]) => `<div class="metric"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`).join('');
+
+        const l = a.lstm;
+        $('lstmBox').innerHTML = l ? `<div class="notice info" style="margin-top:18px">
+            <b style="color:white">LSTM signal:</b> next close ${fmt(l.predicted_next_close)}
+            (<span class="${l.direction === 'Up' ? 'up' : 'down'}">${l.predicted_change_pct >= 0 ? '+' : ''}${fmt(l.predicted_change_pct, 2)}%</span>)
+            vs. no-change baseline ${fmt(l.naive_baseline)} · window: ${l.window}.<br><span class="small">${l.caveat}</span></div>` : '';
+        if (window.innerWidth < 1100) $('resultView').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ---- rebuilt candlestick chart (canvas) -------------------------------
+    function drawCandles(c) {
+        const cv = $('rebuiltCanvas'), dpr = window.devicePixelRatio || 1;
+        const W = cv.clientWidth, H = cv.clientHeight;
+        cv.width = W * dpr; cv.height = H * dpr;
+        const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+        const padL = 12, padR = 64, padT = 14, padB = 22;
+        const hi = Math.max(...c.map(x => x.high)), lo = Math.min(...c.map(x => x.low));
+        const y = v => padT + (hi - v) / (hi - lo || 1) * (H - padT - padB);
+        const step = (W - padL - padR) / c.length, bw = Math.max(1, step * 0.62);
+        g.font = '11px Inter, sans-serif'; g.fillStyle = '#94a3b8'; g.strokeStyle = 'rgba(255,255,255,0.06)';
+        for (let i = 0; i <= 4; i++) {
+            const v = lo + (hi - lo) * i / 4, yy = y(v);
+            g.beginPath(); g.moveTo(padL, yy); g.lineTo(W - padR, yy); g.stroke();
+            g.fillText(fmt(v), W - padR + 8, yy + 4);
+        }
+        c.forEach((k, i) => {
+            const x = padL + step * (i + 0.5);
+            g.strokeStyle = g.fillStyle = k.bullish ? '#10b981' : '#ef4444';
+            g.beginPath(); g.moveTo(x, y(k.high)); g.lineTo(x, y(k.low)); g.stroke();
+            const top = y(Math.max(k.open, k.close)), bot = y(Math.min(k.open, k.close));
+            g.fillRect(x - bw / 2, top, bw, Math.max(1, bot - top));
+        });
+    }
+    window.addEventListener('resize', () => { if (lastResult && !$('rebuiltFrame').classList.contains('hidden')) drawCandles(lastResult.candles); });
+
+    // ---- export / optimiser hand-off --------------------------------------
+    $('csvBtn').addEventListener('click', () => {
+        if (!lastResult) return;
+        const rows = ['index,open,high,low,close,bullish', ...lastResult.candles.map(k => [k.index, k.open, k.high, k.low, k.close, k.bullish].join(','))];
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+        a.download = 'rapos_chart_vision.csv'; a.click();
+    });
+    $('toOptBtn').addEventListener('click', () => {
+        if (!lastResult) return;
+        const closes = lastResult.candles.map(k => k.close);
+        if (closes.length < 20) { showMsg('The optimiser needs at least 20 candles from the chart.', 'err'); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+        if ($('interval').value !== '1D') { showMsg('The optimiser uses daily prices: read a daily (1D) chart to add it.', 'err'); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+        const name = (file?.name || 'CHART').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12).toUpperCase() || 'CHART';
+        try { localStorage.setItem('rapos_custom_asset', JSON.stringify({ name, closes })); } catch (e) {}
+        window.location.href = 'optimizer.html?custom=1';
+    });
+})();
+</script>
+</body>
+</html>
