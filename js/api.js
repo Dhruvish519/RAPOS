@@ -3,7 +3,8 @@
  * Centralized logic for all data fetching and state mutations.
  */
 
-const API_BASE_URL = 'https://rapos-backend.onrender.com';
+// Set once in js/rapos-config.js. `var` so it can coexist with supabase-client.js.
+var API_BASE_URL = window.RAPOS_API_BASE || 'https://rapos-backend.onrender.com';
 
 const RAPOS_API = {
     /**

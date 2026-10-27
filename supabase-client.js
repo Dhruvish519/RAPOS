@@ -2,9 +2,10 @@
 const SUPABASE_URL = "https://btvplzxhozcomnpiihor.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0dnBsenhob3pjb21ucGlpaG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNzcyNDMsImV4cCI6MjA5MTc1MzI0M30.diiNc-1AmqSDAuQAlu6CCWcEghUa0pgg36liQ4QDVPI";
 
-// Backend API Configuration
-// Change this to your Render/Railway URL when you deploy the backend!
-const API_BASE_URL = "https://rapos.onrender.com"; 
+// Backend API URL: set once in js/rapos-config.js (loaded before this file).
+// `var`, not `const`: js/api.js declares it too, and a second `const` in the
+// same page is a SyntaxError that stops the whole script from loading.
+var API_BASE_URL = window.RAPOS_API_BASE || "https://rapos-backend.onrender.com";
 
 // Initialize the Supabase Client (avoiding variable shadowing)
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
