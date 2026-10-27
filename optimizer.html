@@ -11,7 +11,7 @@
     <script src="js/rapos-config.js"></script>
 </head>
 <body>
-<div class="tool-shell">
+<div class="app-shell tool-shell">
     <aside class="sidebar">
         <div class="sidebar-logo">RAPOS</div>
         <nav class="sidebar-nav">
@@ -24,7 +24,7 @@
     <main class="tool-main">
         <header class="tool-header">
             <div>
-                <h1 class="text-gradient">Portfolio Optimiser</h1>
+                <h1>Portfolio <span class="accent">Optimiser</span></h1>
                 <p>Mean-variance (Markowitz) optimisation: the highest expected return for the risk your profile allows, with the efficient frontier for context.</p>
             </div>
             <div class="segmented" id="profiles" role="tablist">
@@ -92,13 +92,13 @@
 (() => {
     const API = window.RAPOS_API_BASE;
     const $ = id => document.getElementById(id);
-    const COLORS = ['#06b6d4', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#94a3b8', '#ec4899', '#22d3ee'];
+    const COLORS = ['#2563eb', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#ec4899', '#64748b'];
     const pct = (v, d = 1) => `${(v * 100).toFixed(d)}%`;
     let profile = 'Moderate', custom = null, donut = null, frontier = null;
 
-    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.color = '#64748b';
     Chart.defaults.font.family = 'Inter, sans-serif';
-    Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+    Chart.defaults.borderColor = '#e2e8f0';
 
     // custom asset handed over from Chart Vision
     if (new URLSearchParams(location.search).get('custom')) {
@@ -167,11 +167,11 @@
         const pt = p => ({ x: p.volatility * 100, y: p.expected_return * 100 });
         if (frontier) frontier.destroy();
         frontier = new Chart($('frontier'), { type: 'scatter', data: { datasets: [
-            { label: 'Efficient frontier', data: d.frontier.map(f => ({ x: f.volatility * 100, y: f.return * 100 })), showLine: true, borderColor: '#06b6d4', backgroundColor: '#06b6d4', pointRadius: 0, borderWidth: 2.5, tension: .25 },
+            { label: 'Efficient frontier', data: d.frontier.map(f => ({ x: f.volatility * 100, y: f.return * 100 })), showLine: true, borderColor: '#2563eb', backgroundColor: '#2563eb', pointRadius: 0, borderWidth: 2.5, tension: .25 },
             { label: 'Assets', data: d.assets.map(a => ({ x: a.volatility * 100, y: a.expected_return * 100, n: a.asset })), backgroundColor: d.assets.map(a => col(a.asset)), pointRadius: 6 },
-            { label: 'Min variance', data: [pt(d.min_variance)], backgroundColor: '#94a3b8', pointStyle: 'rectRot', pointRadius: 9 },
+            { label: 'Min variance', data: [pt(d.min_variance)], backgroundColor: '#64748b', pointStyle: 'rectRot', pointRadius: 9 },
             { label: 'Max Sharpe', data: [pt(d.max_sharpe)], backgroundColor: '#f59e0b', pointStyle: 'rectRot', pointRadius: 9 },
-            { label: `${d.profile} (yours)`, data: [pt(r)], backgroundColor: '#8b5cf6', borderColor: 'white', borderWidth: 2, pointStyle: 'rectRot', pointRadius: 12 },
+            { label: `${d.profile} (yours)`, data: [pt(r)], backgroundColor: '#6366f1', borderColor: '#0f172a', borderWidth: 2, pointStyle: 'rectRot', pointRadius: 12 },
         ] }, options: { maintainAspectRatio: false,
             scales: { x: { title: { display: true, text: 'Volatility (% per year)' }, min: 0 }, y: { title: { display: true, text: 'Expected return (% per year)' } } },
             plugins: { legend: { labels: { usePointStyle: true, boxWidth: 8 } },
@@ -184,8 +184,8 @@
         const keep = d.correlation.assets.map((n, i) => n === 'CASH' ? -1 : i).filter(i => i >= 0);
         const cn = keep.map(i => d.correlation.assets[i]);
         const m = keep.map(i => keep.map(j => d.correlation.matrix[i][j]));
-        const cell = v => { const a = Math.abs(v); const c = v >= 0 ? `rgba(6,182,212,${a * .85})` : `rgba(239,68,68,${a * .85})`;
-            return `<td style="background:${c};text-align:center;padding:9px 6px;font-size:12px;font-weight:700;color:${a > .55 ? 'white' : '#cbd5e1'};border-radius:6px">${v.toFixed(2)}</td>`; };
+        const cell = v => { const a = Math.abs(v); const c = v >= 0 ? `rgba(37,99,235,${a * .85})` : `rgba(239,68,68,${a * .85})`;
+            return `<td style="background:${c};text-align:center;padding:9px 6px;font-size:12px;font-weight:700;color:${a > .5 ? 'white' : '#334155'};border-radius:6px">${v.toFixed(2)}</td>`; };
         $('corr').innerHTML = `<table style="border-collapse:separate;border-spacing:3px;width:100%"><tr><td></td>${cn.map(n => `<td class="small muted" style="text-align:center;font-weight:700">${n}</td>`).join('')}</tr>
             ${m.map((row, i) => `<tr><td class="small muted" style="font-weight:700;padding-right:8px">${cn[i]}</td>${row.map(cell).join('')}</tr>`).join('')}</table>`;
     }

@@ -122,8 +122,8 @@ def client():
 
 def test_api_rebalance_keeps_v2_format(client):
     j = client.get("/api/rebalance", params={"total_value": 10000, "profile": "Moderate"}).json()
-    groups = [r["asset_type"] for r in j["optimization_report"]]
-    assert groups == ["Stocks", "Crypto", "Bonds", "Cash"]
+    groups = sorted(r["asset_type"] for r in j["optimization_report"])
+    assert groups == ["Bonds", "Commodities", "Crypto", "Stocks"]   # same as the js/api.js fallback
     assert abs(sum(r["target_value"] for r in j["optimization_report"]) - 10000) < 5
 
 

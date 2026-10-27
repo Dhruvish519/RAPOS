@@ -10,7 +10,7 @@
     <script src="js/rapos-config.js"></script>
 </head>
 <body>
-<div class="tool-shell">
+<div class="app-shell tool-shell">
     <aside class="sidebar">
         <div class="sidebar-logo">RAPOS</div>
         <nav class="sidebar-nav">
@@ -23,7 +23,7 @@
     <main class="tool-main">
         <header class="tool-header">
             <div>
-                <h1 class="text-gradient">Chart Vision</h1>
+                <h1><span class="accent">Chart</span> Vision</h1>
                 <p>Upload a screenshot of any candlestick chart. RAPOS reads every candle with computer vision, rebuilds the price data, and scores its risk.</p>
             </div>
             <span class="pill" id="apiStatus"><i class="fas fa-circle" style="font-size:8px"></i> Checking AI service…</span>
@@ -85,7 +85,7 @@
                 <div id="resultView" class="hidden">
                     <div class="img-frame" id="overlayFrame"><img id="overlayImg" alt="Detected candles"></div>
                     <div class="img-frame hidden" id="originalFrame"><img id="originalImg" alt="Original chart"></div>
-                    <div class="hidden" id="rebuiltFrame" style="background:rgba(2,6,23,.5); border:1px solid var(--border-glass); border-radius:18px; padding:12px;">
+                    <div class="hidden canvas-frame" id="rebuiltFrame">
                         <canvas id="rebuiltCanvas" style="width:100%; height:360px; display:block"></canvas>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;" id="detectPills"></div>
@@ -239,7 +239,7 @@
 
         const l = a.lstm;
         $('lstmBox').innerHTML = l ? `<div class="notice info" style="margin-top:18px">
-            <b style="color:white">LSTM signal:</b> next close ${fmt(l.predicted_next_close)}
+            <b>LSTM signal:</b> next close ${fmt(l.predicted_next_close)}
             (<span class="${l.direction === 'Up' ? 'up' : 'down'}">${l.predicted_change_pct >= 0 ? '+' : ''}${fmt(l.predicted_change_pct, 2)}%</span>)
             vs. no-change baseline ${fmt(l.naive_baseline)} · window: ${l.window}.<br><span class="small">${l.caveat}</span></div>` : '';
         if (window.innerWidth < 1100) $('resultView').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -255,7 +255,7 @@
         const hi = Math.max(...c.map(x => x.high)), lo = Math.min(...c.map(x => x.low));
         const y = v => padT + (hi - v) / (hi - lo || 1) * (H - padT - padB);
         const step = (W - padL - padR) / c.length, bw = Math.max(1, step * 0.62);
-        g.font = '11px Inter, sans-serif'; g.fillStyle = '#94a3b8'; g.strokeStyle = 'rgba(255,255,255,0.06)';
+        g.font = '11px Inter, sans-serif'; g.fillStyle = '#64748b'; g.strokeStyle = '#e2e8f0';
         for (let i = 0; i <= 4; i++) {
             const v = lo + (hi - lo) * i / 4, yy = y(v);
             g.beginPath(); g.moveTo(padL, yy); g.lineTo(W - padR, yy); g.stroke();

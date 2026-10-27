@@ -221,17 +221,18 @@ def search_stocks(q: str):
 
 # --- PORTFOLIO OPTIMIZATION ---
 
-# Asset classes used by the dashboard, and which optimiser assets feed each one
-DASHBOARD_GROUPS = {"Stocks": ["EQUITY", "TECH"], "Crypto": ["CRYPTO"],
-                    "Bonds": ["BONDS"], "Cash": ["CASH"]}
+# Asset classes used by the dashboard (same four as its offline fallback in
+# js/api.js), and which optimiser assets feed each one
+DASHBOARD_GROUPS = {"Stocks": ["EQUITY", "TECH"], "Bonds": ["BONDS"],
+                    "Crypto": ["CRYPTO"], "Commodities": ["GOLD"]}
 
 
 @functools.lru_cache(maxsize=16)
 def _cached_optimise(profile: str, risk_free: float, max_weight: float, dashboard: bool):
     prices = optimizer.load_universe()
-    if dashboard:  # the dashboard has no Gold class
-        prices = prices.drop(columns=["GOLD"])
-    return optimizer.optimise(prices, profile=profile, risk_free=risk_free, max_weight=max_weight)
+    # The dashboard has no cash class, so its portfolios are fully invested
+    return optimizer.optimise(prices, profile=profile, risk_free=risk_free, max_weight=max_weight,
+                              include_cash=not dashboard)
 
 
 @app.get("/api/rebalance")
@@ -248,12 +249,13 @@ def rebalance_portfolio(total_value: float, profile: str = "Moderate"):
     report = []
     for group, members in DASHBOARD_GROUPS.items():
         w = sum(weights.get(m, 0.0) for m in members)
-        report.append({
+        report.append({  # largest allocation first
             "asset_type": group,
             "target_weight": f"{round(w * 100)}%",
             "target_value": round(total_value * w, 2),
             "description": f"Targeting {w:.0%} allocation for {group}.",
         })
+    report.sort(key=lambda r: -r["target_value"])
     rec = res["recommended"]
     return {
         "profile": profile,
