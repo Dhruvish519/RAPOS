@@ -207,7 +207,7 @@ tr:nth-child(even) td{background:#f8faff;-webkit-print-color-adjust:exact}
 </table>
 
 <h3>Tool Selection for RAPOS</h3>
-<p><b>Selenium IDE</b> — Selected as the primary UI automation tool for RAPOS because it requires no coding, runs directly in Chrome, and can test the live Vercel deployment at <code>https://rapos.vercel.app</code> without any local server setup. It was used to record and replay login, signup, and dashboard navigation flows. Selenium IDE's built-in assertion commands (<code>assertTitle</code>, <code>assertElementPresent</code>) made it easy to verify that the correct page loaded after each action.</p>
+<p><b>Selenium IDE</b> — Selected as the primary UI automation tool for RAPOS because it requires no coding, runs directly in Chrome, and can test the live Vercel deployment at <code>https://rapos-sable.vercel.app</code> without any local server setup. It was used to record and replay login, signup, and dashboard navigation flows. Selenium IDE's built-in assertion commands (<code>assertTitle</code>, <code>assertElementPresent</code>) made it easy to verify that the correct page loaded after each action.</p>
 <p><b>Postman</b> — Used for testing all five FastAPI REST API endpoints hosted on Render.com. Postman's environment variables feature allowed switching between local and production base URLs. Collections were created for: Prediction API, Holdings CRUD, and Market Discovery. Each request was verified for correct HTTP status codes (200, 201, 422, 401) and response JSON structure.</p>
 <p><b>PyTest</b> — Used for backend unit testing in Python. Test functions were written in a <code>test_main.py</code> file to verify the correctness of: the <code>calculate_risk_score()</code> function, the <code>get_sentiment()</code> function, and the MinMaxScaler normalization logic. PyTest was run locally during development to catch logic errors before deployment.</p>
 
@@ -227,7 +227,7 @@ tr:nth-child(even) td{background:#f8faff;-webkit-print-color-adjust:exact}
 
 <!-- ===== Q4 ===== -->
 <h2>Q.4 — Selenium IDE: Web-Based Testing on RAPOS Prototype</h2>
-<p><b>Overview:</b> Selenium IDE is a browser-based record-and-playback testing tool available as a Chrome extension. It allows testers to record real user interactions with a web application and replay them as automated test cases. For RAPOS, Selenium IDE was used to create a complete test suite named <b>RAPOS_Testing_Suite</b> targeting the live deployment at <code>https://rapos.vercel.app</code>. The suite covers the four most critical user flows: Login, Registration, Dashboard Interaction, and Logout — ensuring the application behaves correctly for every new deployment pushed to Vercel via GitHub CI/CD.</p>
+<p><b>Overview:</b> Selenium IDE is a browser-based record-and-playback testing tool available as a Chrome extension. It allows testers to record real user interactions with a web application and replay them as automated test cases. For RAPOS, Selenium IDE was used to create a complete test suite named <b>RAPOS_Testing_Suite</b> targeting the live deployment at <code>https://rapos-sable.vercel.app</code>. The suite covers the four most critical user flows: Login, Registration, Dashboard Interaction, and Logout — ensuring the application behaves correctly for every new deployment pushed to Vercel via GitHub CI/CD.</p>
 <p>Selenium IDE records each browser interaction as a command (e.g., <code>open</code>, <code>type</code>, <code>click</code>) and allows adding assertions (<code>assertTitle</code>, <code>assertElementPresent</code>) to verify correctness. The tool exports test results and can generate reports. This is particularly valuable for RAPOS since the application is continuously deployed — every push to the <code>main</code> branch on GitHub triggers a new Vercel deployment, making automated regression testing essential to catch any regressions early.</p>
 
 <div class="meta">
@@ -237,11 +237,11 @@ tr:nth-child(even) td{background:#f8faff;-webkit-print-color-adjust:exact}
   <div><span>Backend Runtime:</span> Python 3.11 / FastAPI on Render.com</div>
   <div><span>Database:</span> Supabase (PostgreSQL)</div>
   <div><span>Frontend:</span> HTML5 / CSS3 / Vanilla JavaScript</div>
-  <div><span>Testing URL:</span> https://rapos.vercel.app</div>
+  <div><span>Testing URL:</span> https://rapos-sable.vercel.app</div>
 </div>
 
 <h3>Project Description</h3>
-<p><b>RAPOS (Risk-Aware Portfolio Optimisation System)</b> is a production-deployed, full-stack AI financial terminal accessible at <code>https://rapos.vercel.app</code>. It is built for retail investors who lack access to institutional-grade analytics tools. The system combines a <b>Keras LSTM neural network</b> (trained on 60-day OHLCV sequences) for next-day stock price prediction with <b>Markowitz Modern Portfolio Theory</b> for intelligent rebalancing — all served in real time through a FastAPI backend on Render.com and a PostgreSQL database on Supabase.</p>
+<p><b>RAPOS (Risk-Aware Portfolio Optimisation System)</b> is a production-deployed, full-stack AI financial terminal accessible at <code>https://rapos-sable.vercel.app</code>. It is built for retail investors who lack access to institutional-grade analytics tools. The system combines a <b>Keras LSTM neural network</b> (trained on 60-day OHLCV sequences) for next-day stock price prediction with <b>Markowitz Modern Portfolio Theory</b> for intelligent rebalancing — all served in real time through a FastAPI backend on Render.com and a PostgreSQL database on Supabase.</p>
 <p>The frontend is built in pure HTML5, CSS3, and Vanilla JavaScript — deployed on Vercel's global CDN edge network. The dashboard provides: live net worth tracking (updates every 10 seconds via Supabase WebSocket), a Neural Prediction Card (LSTM result + AI Risk Score 1–10 + Bullish/Bearish sentiment), an AI Rebalancer (3 risk profiles with BUY/SELL amounts), a Market Hub (live Finnhub data + TradingView charts), and an Institutional Price Ticker (BTC, NVDA, AAPL, GOLD, TSLA) pinned at the top. The Selenium IDE test suite verifies all major user flows in this production environment.</p>
 
 <h3>Functional Requirements Tested</h3>
@@ -299,7 +299,7 @@ tr:nth-child(even) td{background:#f8faff;-webkit-print-color-adjust:exact}
 <li>Search <b>Selenium IDE</b> → click <b>Add to Chrome</b> → Confirm.</li>
 <li>Click the Selenium IDE icon in the toolbar to launch.</li>
 <li>Select <b>Create a new project</b> → Name: <code>RAPOS_Testing_Suite</code>.</li>
-<li>Enter base URL: <code>https://rapos.vercel.app</code></li>
+<li>Enter base URL: <code>https://rapos-sable.vercel.app</code></li>
 <li>Click <b>+</b> → New test suite → Name: <code>Login_Tests</code>.</li>
 <li>Click <b>Record a new test</b> → Name: <code>TC-LG-01_Valid_Login</code>.</li>
 <li>A new tab opens — perform the login manually; Selenium records each action.</li>
@@ -398,30 +398,30 @@ tr:nth-child(even) td{background:#f8faff;-webkit-print-color-adjust:exact}
 </table>
 
 <h2>Screenshots</h2>
-<p>The following screenshots were captured during <b>live Selenium IDE test execution</b> on <code>https://rapos.vercel.app</code>. Each screenshot corresponds to a specific test case step, showing the browser state at the moment of assertion. Screenshots serve as visual evidence that the expected UI state was achieved and provide a permanent record of test results for audit and submission purposes.</p>
+<p>The following screenshots were captured during <b>live Selenium IDE test execution</b> on <code>https://rapos-sable.vercel.app</code>. Each screenshot corresponds to a specific test case step, showing the browser state at the moment of assertion. Screenshots serve as visual evidence that the expected UI state was achieved and provide a permanent record of test results for audit and submission purposes.</p>
 
 <h3>Screenshot 1 — TC-LG-01: Login Page</h3>
-<p><b>Test Case:</b> TC-LG-01 &nbsp;|&nbsp; <b>Module:</b> Authentication &nbsp;|&nbsp; <b>URL:</b> rapos.vercel.app/login &nbsp;|&nbsp; <b>Status:</b> <span style="color:green;font-weight:700">Pass</span></p>
+<p><b>Test Case:</b> TC-LG-01 &nbsp;|&nbsp; <b>Module:</b> Authentication &nbsp;|&nbsp; <b>URL:</b> rapos-sable.vercel.app/login &nbsp;|&nbsp; <b>Status:</b> <span style="color:green;font-weight:700">Pass</span></p>
 <p>The RAPOS Login page showing the "Welcome Back" heading, Email Address field (placeholder: you@example.com), masked Password field, Remember Me checkbox, Forgot Password link, and the blue Sign In button. Light gradient background confirms the page loaded correctly. This screenshot was captured at Step 1 of TC-LG-01 before credentials are entered, verifying the login form renders completely.</p>
 <div style="text-align:center;margin:10px 0 20px;">
 <img src="ss_login.png" style="width:65%;border:2px solid #c7d9ff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);" alt="RAPOS Login Page">
-<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 1: RAPOS Login Page — TC-LG-01 — rapos.vercel.app/login</i></div>
+<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 1: RAPOS Login Page — TC-LG-01 — rapos-sable.vercel.app/login</i></div>
 </div>
 
 <h3>Screenshot 2 — TC-LG-04 / Landing: Home Page with Institutional Ticker</h3>
-<p><b>Test Case:</b> TC-LG-04 (Forgot Password visible) &nbsp;|&nbsp; <b>Module:</b> Landing / Auth &nbsp;|&nbsp; <b>URL:</b> rapos.vercel.app &nbsp;|&nbsp; <b>Status:</b> <span style="color:green;font-weight:700">Pass</span></p>
+<p><b>Test Case:</b> TC-LG-04 (Forgot Password visible) &nbsp;|&nbsp; <b>Module:</b> Landing / Auth &nbsp;|&nbsp; <b>URL:</b> rapos-sable.vercel.app &nbsp;|&nbsp; <b>Status:</b> <span style="color:green;font-weight:700">Pass</span></p>
 <p>The RAPOS Landing Page showing: (1) the <b>Institutional Price Ticker</b> scrolling at the top with live prices — BTC/USD $64,321 (+1.2%), NVDA $854.12 (+2.4%), TSLA $175.22 (-0.8%), AAPL $189.44 (+0.4%), GOLD $2,342 (+1.1%); (2) navigation bar with Home, Features, How it Works, Log in, and Sign up links; (3) the hero section with dark background and headline <b>"Smarter Investments with Risk-Aware Intelligence"</b> with subtitle text and two CTA buttons. This verifies the live ticker and navigation are fully functional.</p>
 <div style="text-align:center;margin:10px 0 20px;">
 <img src="ss_landing.png" style="width:95%;border:2px solid #c7d9ff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);" alt="RAPOS Landing Page">
-<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 2: RAPOS Landing Page — Institutional Price Ticker + Hero — rapos.vercel.app</i></div>
+<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 2: RAPOS Landing Page — Institutional Price Ticker + Hero — rapos-sable.vercel.app</i></div>
 </div>
 
 <h3>Screenshot 3 — TC-RG-01: Signup / Registration Page</h3>
-<p><b>Test Case:</b> TC-RG-01 &nbsp;|&nbsp; <b>Module:</b> Registration &nbsp;|&nbsp; <b>URL:</b> rapos.vercel.app/signup &nbsp;|&nbsp; <b>Status:</b> <span style="color:green;font-weight:700">Pass</span></p>
+<p><b>Test Case:</b> TC-RG-01 &nbsp;|&nbsp; <b>Module:</b> Registration &nbsp;|&nbsp; <b>URL:</b> rapos-sable.vercel.app/signup &nbsp;|&nbsp; <b>Status:</b> <span style="color:green;font-weight:700">Pass</span></p>
 <p>The RAPOS Signup Page showing the "Create an Account" heading with subtitle "Start optimizing your portfolio today." The form includes: First Name and Last Name fields side-by-side, Email Address field, Password field (placeholder: Create a strong password), Investment Experience dropdown (Select your level), Terms of Service and Privacy Policy links, and the blue "Create Account" button. This screenshot was captured at Step 1 of TC-RG-01 verifying all required fields are present before test data is entered.</p>
 <div style="text-align:center;margin:10px 0 20px;">
 <img src="ss_signup.png" style="width:65%;border:2px solid #c7d9ff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);" alt="RAPOS Signup Page">
-<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 3: RAPOS Signup Page — TC-RG-01 — rapos.vercel.app/signup</i></div>
+<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 3: RAPOS Signup Page — TC-RG-01 — rapos-sable.vercel.app/signup</i></div>
 </div>
 
 <h3>Screenshot 4 — TC-DB-01: Authenticated User Dashboard</h3>
@@ -429,7 +429,7 @@ tr:nth-child(even) td{background:#f8faff;-webkit-print-color-adjust:exact}
 <p>This screenshot shows the <b>production RAPOS Dashboard</b> after a successful login. Key verified components include: (1) Personalized Greeting "Hi Abhi, ready to grow?"; (2) <b>Neural Hub Active</b> status badge showing LSTM architecture with 94.2% accuracy and 24ms latency; (3) The navigation sidebar with links to Market Hub and AI Rebalancer; (4) The <b>Portfolio Summary</b> card with real-time Net Worth tracking; and (5) The <b>Neural Prediction</b> component currently analyzing ticker data. This confirms that the Supabase auth state is correctly maintained and that the private dashboard data is only visible to the authenticated user.</p>
 <div style="text-align:center;margin:10px 0 20px;">
 <img src="ss_dashboard.png" style="width:95%;border:2px solid #c7d9ff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2);" alt="RAPOS Authenticated Dashboard">
-<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 4: RAPOS Private Dashboard — Authenticated Session — rapos.vercel.app/dashboard</i></div>
+<div style="font-size:9pt;color:#666;margin-top:5px;"><i>Fig 4: RAPOS Private Dashboard — Authenticated Session — rapos-sable.vercel.app/dashboard</i></div>
 </div>
 
 <h2>Bug Tracking and Resolution</h2>

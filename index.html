@@ -6,6 +6,12 @@
     <title>RAPOS | Institutional Risk-Aware Intelligence</title>
     <link rel="stylesheet" href="s1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="js/rapos-config.js"></script>
+    <script>
+        // Wake the (free-plan, sleep-when-idle) backend while the visitor reads
+        // the page or logs in. Fire-and-forget: nothing waits on it.
+        fetch(window.RAPOS_API_BASE + '/api/health', { keepalive: true }).catch(function () {});
+    </script>
 </head>
 <body>
 
@@ -30,6 +36,8 @@
             <li><a href="index.html" style="text-decoration:none; color:var(--slate-900); font-weight:600; font-size:14px;">Terminal</a></li>
             <li><a href="#features" style="text-decoration:none; color:var(--slate-500); font-weight:500; font-size:14px;">Intelligence</a></li>
             <li><a href="#workflow" style="text-decoration:none; color:var(--slate-500); font-weight:500; font-size:14px;">Architecture</a></li>
+            <li><a href="chart-vision.html" style="text-decoration:none; color:var(--slate-500); font-weight:500; font-size:14px;">Chart Vision</a></li>
+            <li><a href="optimizer.html" style="text-decoration:none; color:var(--slate-500); font-weight:500; font-size:14px;">Optimiser</a></li>
             <li style="margin-left: 16px;"><a href="login.html" class="btn btn-secondary">Log In</a></li>
             <li><a href="signup.html" class="btn btn-primary">Open Account</a></li>
         </ul>
@@ -117,6 +125,28 @@
                     Sample Terminal Report <i class="fas fa-arrow-right"></i>
                 </div>
             </div>
+
+            <a href="chart-vision.html" class="card" style="display: block; text-decoration: none; color: inherit;">
+                <div style="width: 56px; height: 56px; background: var(--brand-primary); color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 24px;">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <h3 class="font-heading" style="font-size: 24px; margin-bottom: 16px; color: var(--slate-900);">Chart Vision</h3>
+                <p style="color: var(--slate-500); line-height: 1.7; margin-bottom: 24px;">Upload a candlestick screenshot and OpenCV reads every candle, turning the image back into open, high, low and close prices.</p>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--brand-primary);">
+                    Open Chart Vision <i class="fas fa-arrow-right"></i>
+                </div>
+            </a>
+
+            <a href="optimizer.html" class="card" style="display: block; text-decoration: none; color: inherit;">
+                <div style="width: 56px; height: 56px; background: var(--brand-secondary); color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 24px;">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="font-heading" style="font-size: 24px; margin-bottom: 16px; color: var(--slate-900);">Portfolio Optimiser</h3>
+                <p style="color: var(--slate-500); line-height: 1.7; margin-bottom: 24px;">Markowitz mean-variance optimisation with an interactive efficient frontier: pick your assets and see the minimum-risk and maximum-Sharpe mixes.</p>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--brand-secondary);">
+                    Open Optimiser <i class="fas fa-arrow-right"></i>
+                </div>
+            </a>
         </div>
     </section>
 

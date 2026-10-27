@@ -1,5 +1,9 @@
 # RAPOS: Risk-Aware Portfolio Optimisation System
 
+**Live app:** https://rapos-sable.vercel.app  ·  **Chart Vision:** https://rapos-sable.vercel.app/chart-vision  ·  **Optimiser:** https://rapos-sable.vercel.app/optimizer
+
+**Backend API:** https://rapos-api.onrender.com ([health check](https://rapos-api.onrender.com/api/health); the free instance can take up to a minute to wake after being idle)
+
 RAPOS is a portfolio web app with an AI backend. Version 3 adds two modules:
 
 | Module | What it does | Where |
@@ -14,7 +18,7 @@ RAPOS is a portfolio web app with an AI backend. Version 3 adds two modules:
 3. **Grid and plot area**: morphological opening with long line kernels finds gridlines; lines spanning most of the chart define the plot rectangle.
 4. **Candles**: column-occupancy runs give each candle's x-extent; merged neighbours are split at profile minima; text-like blobs are rejected. The row-width profile separates the wide body from the thin wick. Grey wicks are traced through contrast, and evenly spaced gaps are checked for faint doji candles.
 5. **Other colour schemes**: if the chart isn't green/red, candles are found by contrast, hollow bodies are filled, body colours are clustered (k-means in Lab), and which cluster means "up" is decided by price continuity (a candle usually opens near the previous close).
-6. **Price axis**: each axis label is located and read with Tesseract OCR at a fixed text height (voting across two sizes); a RANSAC-style linear fit maps pixel rows to prices. If OCR isn't available, the user enters the chart's high and low prices.
+6. **Price axis**: each axis label is located, scaled to a fixed text height, and all labels are stacked into one image read by a single Tesseract call (falling back to per-label reading with size voting if the lines don't line up); the right-hand axis is tried first and the left only if needed; a RANSAC-style linear fit maps pixel rows to prices. If OCR isn't available, the user enters the chart's high and low prices.
 7. **Analysis**: volatility, drawdown, trend, AI risk score and an LSTM signal on the extracted closes.
 
 `python -m cv.evaluate` (from `backend/`) benchmarks the digitiser against ground truth across 13 chart styles (including the independent `mplfinance` library), 3 densities and JPEG/resize degradation. Results go to `backend/cv/results/`.

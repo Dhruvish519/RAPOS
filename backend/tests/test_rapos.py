@@ -172,3 +172,16 @@ def test_numpy_lstm_matches_pytorch():
 def test_api_predict_risk_uses_model(client):
     j = client.get("/api/predict-risk", params={"ticker": "SPXX"}).json()
     assert j["is_simulated"] is False and j["model_type"] == "LSTM Neural Network"
+
+
+def test_cors_allows_site_and_previews_only(client):
+    def preflight(origin):
+        return client.options("/api/health", headers={
+            "Origin": origin, "Access-Control-Request-Method": "GET"})
+    for ok in ("https://rapos-sable.vercel.app", "http://localhost:5500",
+               "https://rapos-git-feature-dhruvish519s-projects.vercel.app"):
+        r = preflight(ok)
+        assert r.headers.get("access-control-allow-origin") == ok
+        assert r.headers.get("access-control-allow-credentials") == "true"
+    r = preflight("https://evil.example.com")
+    assert "access-control-allow-origin" not in r.headers

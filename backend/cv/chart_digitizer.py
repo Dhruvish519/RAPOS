@@ -648,6 +648,84 @@ def _text_lines(strip: np.ndarray, y_range: tuple[float, float]):
     return lines
 
 
+_OCR_WHITELIST = "-c tessedit_char_whitelist=0123456789.,-"
+_BATCH_TEXT_H = 26   # Tesseract is most reliable at ~20-32 px text height
+_BATCH_GAP = 20      # white rows between stacked labels
+
+
+def _scale_label(crop: np.ndarray, text_h: int, target: int) -> np.ndarray:
+    s = target / max(text_h, 1)
+    return cv2.resize(crop, None, fx=s, fy=s,
+                      interpolation=cv2.INTER_CUBIC if s > 1 else cv2.INTER_AREA)
+
+
+def _read_label(crop: np.ndarray, text_h: int, target: int) -> str | None:
+    """One Tesseract call on a single label (the slow, per-label path)."""
+    c = cv2.copyMakeBorder(_scale_label(crop, text_h, target), 12, 12, 12, 12,
+                           cv2.BORDER_CONSTANT, value=255)
+    t = pytesseract.image_to_string(c, config=f"--psm 7 {_OCR_WHITELIST}").strip().replace(" ", "")
+    return t if _NUM.fullmatch(t) else None
+
+
+def _read_label_voted(crop: np.ndarray, text_h: int) -> str | None:
+    # Over-upscaling makes Tesseract confuse similar digits (5/9, 3/8): read at
+    # two sizes and use a third as a tie-breaker.
+    a, b = _read_label(crop, text_h, 22), _read_label(crop, text_h, 30)
+    if a == b:
+        return a
+    c = _read_label(crop, text_h, 26)
+    return c if c in (a, b) else None
+
+
+def _read_labels_batched(crops: list[tuple[np.ndarray, int]],
+                         text_h: int = _BATCH_TEXT_H) -> list[str | None] | None:
+    """
+    Read every label with ONE Tesseract call: scale each crop to the same text
+    height, stack them vertically with white gaps and run --psm 6 (a uniform
+    block of text), then map output lines back to labels in order. Launching
+    Tesseract dominates the cost, so this is far faster than one call per
+    label. Returns None when the line count doesn't match, so the caller can
+    fall back to per-label reading.
+    """
+    scaled = [_scale_label(c, h, text_h) for c, h in crops]
+    width = max(s.shape[1] for s in scaled) + 24
+    rows = [np.full((_BATCH_GAP, width), 255, np.uint8)]
+    for s in scaled:
+        pad = np.full((s.shape[0], width), 255, np.uint8)
+        pad[:, 12:12 + s.shape[1]] = s
+        rows += [pad, np.full((_BATCH_GAP, width), 255, np.uint8)]
+    sheet = np.vstack(rows)
+    out = pytesseract.image_to_string(sheet, config=f"--psm 6 {_OCR_WHITELIST}")
+    lines = [ln.replace(" ", "") for ln in out.splitlines() if ln.strip()]
+    if len(lines) != len(crops):
+        return None
+    return [t if _NUM.fullmatch(t) else None for t in lines]
+
+
+def _read_labels_batched_voted(crops: list[tuple[np.ndarray, int]]) -> list[str | None] | None:
+    """
+    The same two-size vote as _read_label_voted, but batched: one Tesseract
+    call per size for all labels, plus one tie-break call (26 px) covering only
+    the labels where the 22 px and 30 px reads disagree. Junk blobs in the axis
+    strip (bits of candles, tick marks) rarely read the same at both sizes, so
+    the vote drops them; a single read would turn them into fake price points.
+    Returns None if any batch's line count doesn't match the labels.
+    """
+    a = _read_labels_batched(crops, 22)
+    b = _read_labels_batched(crops, 30) if a is not None else None
+    if a is None or b is None:
+        return None
+    out = [x if x == y else None for x, y in zip(a, b)]
+    todo = [i for i, (x, y) in enumerate(zip(a, b)) if x != y]
+    if todo:
+        c = _read_labels_batched([crops[i] for i in todo], _BATCH_TEXT_H)
+        if c is None:
+            c = [_read_label(*crops[i], _BATCH_TEXT_H) for i in todo]
+        for i, t in zip(todo, c):
+            out[i] = t if t in (a[i], b[i]) else None
+    return out
+
+
 def _ocr_strip(strip: np.ndarray, dark: bool, x_off: int,
                y_range: tuple[float, float] = (0, 1e9), scale: int = 4):
     if strip.size == 0 or strip.shape[1] < 8:
@@ -655,23 +733,20 @@ def _ocr_strip(strip: np.ndarray, dark: bool, x_off: int,
     g = cv2.cvtColor(strip, cv2.COLOR_BGR2GRAY)
     if dark or np.median(g) < 110:
         g = 255 - g
-    def read(crop, text_h, target):
-        s = target / max(text_h, 1)
-        c = cv2.resize(crop, None, fx=s, fy=s, interpolation=cv2.INTER_CUBIC if s > 1 else cv2.INTER_AREA)
-        c = cv2.copyMakeBorder(c, 12, 12, 12, 12, cv2.BORDER_CONSTANT, value=255)
-        t = pytesseract.image_to_string(
-            c, config="--psm 7 -c tessedit_char_whitelist=0123456789.,-").strip().replace(" ", "")
-        return t if _NUM.fullmatch(t) else None
 
-    pts = []
+    labels = []
     for y0, y1, xa, xb in _text_lines(strip, y_range):
         crop = g[max(0, y0 - 3):y1 + 4, max(0, xa - 3):xb + 4]
-        text_h = y1 - y0 + 1
-        # Tesseract is most reliable at ~20-32 px text height; over-upscaling
-        # makes it confuse similar digits (5/9, 3/8). Read at two sizes and
-        # use a third as a tie-breaker.
-        a, b = read(crop, text_h, 22), read(crop, text_h, 30)
-        txt = a if a == b else (lambda c: c if c in (a, b) else None)(read(crop, text_h, 26))
+        labels.append(((y0, y1, xa, xb), crop, y1 - y0 + 1))
+    if not labels:
+        return []
+
+    texts = _read_labels_batched_voted([(c, h) for _, c, h in labels])
+    if texts is None:   # line count mismatch: fall back to the per-label path
+        texts = [_read_label_voted(c, h) for _, c, h in labels]
+
+    pts = []
+    for ((y0, y1, xa, xb), _, _), txt in zip(labels, texts):
         if not txt:
             continue
         try:
@@ -742,7 +817,12 @@ def calibrate_ocr(img, plot_area, candles, hlines, dark):
     bottom = float(np.percentile([c.low_y for c in candles], 98))
     margin = 0.12 * (bottom - top) + 15
     best = None
+    # Most charts put the price axis on the right: read that strip first and
+    # only spend OCR time on the left strip when the right one doesn't give a
+    # usable calibration (fewer than 3 inliers).
     for name, (a, b) in (("right", (right_x, w)), ("left", (0, max(0, left_x)))):
+        if best is not None and best["inliers"] >= 3:
+            break
         strip = img[:, a:b]
         pts = _ocr_strip(strip, dark, a, (top - margin, bottom + margin))
         fit = _robust_fit(pts, hlines)

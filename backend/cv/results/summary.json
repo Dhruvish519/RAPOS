@@ -8,7 +8,7 @@
   "failed_images": 0,
   "direction_acc_pct": 99.71,
   "mean_return_corr": 0.9969,
-  "mean_ms_per_image": 2119.2,
+  "mean_ms_per_image": 1501.5,
   "by_renderer": [
     {
       "renderer": "mpf-binance",

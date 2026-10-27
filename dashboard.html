@@ -293,6 +293,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/rapos-config.js"></script>
+<script>
+    // Start waking the sleep-when-idle backend right away; nothing waits on it.
+    fetch(window.RAPOS_API_BASE + '/api/health', { keepalive: true }).catch(function () {});
+</script>
 <script src="supabase-client.js"></script>
 <script src="js/api.js"></script>
 <script src="js/ui.js"></script>

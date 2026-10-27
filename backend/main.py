@@ -33,9 +33,18 @@ def _finnhub():
 
 
 # --- CORS SETUP ---
+# Browsers reject allow_origins=["*"] together with credentials, so list the
+# real origins. ALLOWED_ORIGINS (comma-separated) is set on Render; Vercel
+# preview deployments (rapos-<hash>.vercel.app) are allowed by pattern.
+DEFAULT_ORIGINS = "https://rapos-sable.vercel.app,http://localhost:5500,http://127.0.0.1:5500"
+ALLOWED_ORIGINS = [o.strip().rstrip("/")
+                   for o in os.getenv("ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()]
+ALLOWED_ORIGIN_REGEX = r"https://rapos-.*\.vercel\.app"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

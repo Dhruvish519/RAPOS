@@ -45,7 +45,7 @@ tr:nth-child(even) td{background:#f4f7ff}
 <tr><th>Level</th><th>Scope</th><th>Tool</th><th>Responsible</th></tr>
 <tr><td>Unit Testing</td><td>LSTM functions, risk score logic, API endpoints</td><td>PyTest, Postman</td><td>Developer</td></tr>
 <tr><td>Integration Testing</td><td>Frontend ↔ FastAPI ↔ Supabase data flow</td><td>Postman, Manual</td><td>Developer</td></tr>
-<tr><td>System Testing</td><td>End-to-end user flows on rapos.vercel.app</td><td>Selenium IDE</td><td>QA Tester</td></tr>
+<tr><td>System Testing</td><td>End-to-end user flows on rapos-sable.vercel.app</td><td>Selenium IDE</td><td>QA Tester</td></tr>
 <tr><td>Acceptance Testing</td><td>Feature verification per acceptance criteria</td><td>Manual</td><td>Team + Mentor</td></tr>
 <tr><td>Performance Testing</td><td>API response time &lt; 3s, 10s heartbeat accuracy</td><td>Manual / Postman</td><td>Developer</td></tr>
 </table>
@@ -53,7 +53,7 @@ tr:nth-child(even) td{background:#f4f7ff}
 <h3>1.3 Test Environment</h3>
 <table>
 <tr><th>Component</th><th>Technology</th><th>URL / Location</th></tr>
-<tr><td>Frontend</td><td>HTML5 / JS / CSS3</td><td>https://rapos.vercel.app</td></tr>
+<tr><td>Frontend</td><td>HTML5 / JS / CSS3</td><td>https://rapos-sable.vercel.app</td></tr>
 <tr><td>Backend (AI)</td><td>Python FastAPI</td><td>https://rapos-api.onrender.com</td></tr>
 <tr><td>Database</td><td>Supabase PostgreSQL</td><td>Supabase Cloud (Singapore)</td></tr>
 <tr><td>LSTM Model</td><td>Keras / TensorFlow</td><td>Loaded in FastAPI on startup</td></tr>
@@ -127,7 +127,7 @@ tr:nth-child(even) td{background:#f4f7ff}
 <tr><td>Market Hub</td><td>Live market movers and embedded TradingView chart load within 5 seconds</td><td class="pass">Yes</td></tr>
 <tr><td>Security</td><td>Unauthenticated users cannot access dashboard or API endpoints (RLS active)</td><td class="pass">Yes</td></tr>
 <tr><td>PDF Export</td><td>Export generates complete, formatted portfolio report in PDF format</td><td class="pass">Yes</td></tr>
-<tr><td>Deployment</td><td>Frontend live on rapos.vercel.app; Backend live on Render; CI/CD via GitHub</td><td class="pass">Yes</td></tr>
+<tr><td>Deployment</td><td>Frontend live on rapos-sable.vercel.app; Backend live on Render; CI/CD via GitHub</td><td class="pass">Yes</td></tr>
 </table>
 
 <!-- ===== DEPLOYMENT DIAGRAM ===== -->
@@ -153,7 +153,7 @@ tr:nth-child(even) td{background:#f4f7ff}
   <div class="tier t2">
     <div class="tier-label">CDN / Presentation Tier</div>
     <div class="tier-inner">
-      <div class="node">▲ Vercel Edge<small>rapos.vercel.app</small></div>
+      <div class="node">▲ Vercel Edge<small>rapos-sable.vercel.app</small></div>
       <div class="node">📄 Static Files<small>HTML · CSS · JS</small></div>
     </div>
   </div>
@@ -199,7 +199,7 @@ tr:nth-child(even) td{background:#f4f7ff}
 <tr><td>1</td><td>Developer pushes code to GitHub main branch</td><td>GitHub</td><td>CI/CD pipeline triggered</td></tr>
 <tr><td>2</td><td>Vercel auto-detects push → builds frontend</td><td>Vercel</td><td>Static files deployed to global CDN edge</td></tr>
 <tr><td>3</td><td>Render auto-detects push → restarts FastAPI server</td><td>Render.com</td><td>LSTM model loaded, API live</td></tr>
-<tr><td>4</td><td>User visits rapos.vercel.app → HTML/JS served from CDN</td><td>Browser</td><td>Frontend loads instantly</td></tr>
+<tr><td>4</td><td>User visits rapos-sable.vercel.app → HTML/JS served from CDN</td><td>Browser</td><td>Frontend loads instantly</td></tr>
 <tr><td>5</td><td>JS calls FastAPI for predictions → FastAPI runs LSTM</td><td>Render → Keras</td><td>Prediction JSON returned &lt;3s</td></tr>
 <tr><td>6</td><td>Supabase Realtime pushes DB changes to browser</td><td>Supabase → Browser</td><td>Portfolio updates without refresh</td></tr>
 </table>
@@ -210,7 +210,7 @@ tr:nth-child(even) td{background:#f4f7ff}
 <tr><td>Frontend Host</td><td>Vercel (Free/Pro)</td><td>Node.js build, global CDN, HTTPS</td></tr>
 <tr><td>Backend Host</td><td>Render.com (Free Tier)</td><td>Python 3.11, 512MB RAM, auto-sleep</td></tr>
 <tr><td>Database</td><td>Supabase Free Tier</td><td>PostgreSQL, 500MB, Realtime enabled</td></tr>
-<tr><td>Domain</td><td>rapos.vercel.app</td><td>Vercel-assigned SSL certificate</td></tr>
+<tr><td>Domain</td><td>rapos-sable.vercel.app</td><td>Vercel-assigned SSL certificate</td></tr>
 <tr><td>Environment Variables</td><td>Supabase URL + Key, Finnhub Key</td><td>Stored in Vercel &amp; Render env settings</td></tr>
 <tr><td>LSTM Model File</td><td>rapos_lstm_model.h5</td><td>Committed to backend/ folder, loaded on startup</td></tr>
 </table>

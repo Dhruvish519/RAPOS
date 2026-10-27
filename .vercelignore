@@ -3,3 +3,5 @@ backend/
 render.yaml
 *.docx
 *.pdf
+.github/
+docs/archive/
