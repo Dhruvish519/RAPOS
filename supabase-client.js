@@ -1,6 +1,6 @@
 // Supabase Configuration for RAPOS
-const SUPABASE_URL = "https://btvplzxhozcomnpiihor.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0dnBsenhob3pjb21ucGlpaG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNzcyNDMsImV4cCI6MjA5MTc1MzI0M30.diiNc-1AmqSDAuQAlu6CCWcEghUa0pgg36liQ4QDVPI";
+const SUPABASE_URL = "https://pskjlckkhzfsxqpcpytk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBza2psY2traHpmc3hxcGNweXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxMDIwNzcsImV4cCI6MjEwODY3ODA3N30.NkPDedKMDH0OCgbut3vZii6eiLl6BSgOYKwiodjJSh4";
 
 // Backend API URL: set once in js/rapos-config.js (loaded before this file).
 // `var`, not `const`: js/api.js declares it too, and a second `const` in the
