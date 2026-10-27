@@ -4,7 +4,7 @@
  */
 
 // Set once in js/rapos-config.js. `var` so it can coexist with supabase-client.js.
-var API_BASE_URL = window.RAPOS_API_BASE || 'https://rapos-backend.onrender.com';
+var API_BASE_URL = window.RAPOS_API_BASE || 'https://rapos-api.onrender.com';
 
 const RAPOS_API = {
     /**

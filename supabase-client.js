@@ -5,7 +5,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Backend API URL: set once in js/rapos-config.js (loaded before this file).
 // `var`, not `const`: js/api.js declares it too, and a second `const` in the
 // same page is a SyntaxError that stops the whole script from loading.
-var API_BASE_URL = window.RAPOS_API_BASE || "https://rapos-backend.onrender.com";
+var API_BASE_URL = window.RAPOS_API_BASE || "https://rapos-api.onrender.com";
 
 // Initialize the Supabase Client (avoiding variable shadowing)
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
