@@ -557,9 +557,56 @@ def recover_missing(img: np.ndarray, bg: np.ndarray, candles: list[Candle], plot
             out.append(Candle(xc - half, xc + half, top, bot, by, by, bull))
             added += 1
         out.append(nxt)
+    edge = _recover_edge_dojis(hsv, out, step, w_typ, plot_area)
+    out = sorted(out + edge, key=lambda c: c.xc)
+    added += len(edge)
     if added:
         warnings.append(f"Recovered {added} faint doji candle(s) from their wicks.")
     return out
+
+
+def _recover_edge_dojis(hsv: np.ndarray, candles: list[Candle], step: float, w_typ: int,
+                        plot_area) -> list[Candle]:
+    """
+    The gap test above can't see a doji at either END of the series. The first
+    candle often sits on an x-axis tick, so its wick is hidden under a vertical
+    gridline (and erased with it); after JPEG compression its 1-px body can
+    also fall below the colour threshold. Look one step beyond each end for a
+    short, saturated, candle-coloured horizontal line that stays inside the
+    candle's slot (a "last price" line would run on past it).
+    """
+    x0p, y0p, x1p, y1p = plot_area
+    h, w = hsv.shape[:2]
+    half = max(1, w_typ // 2)
+    found = []
+    for nb, xc in ((candles[0], candles[0].xc - step), (candles[-1], candles[-1].xc + step)):
+        xc = int(round(xc))
+        if xc - half < max(0, x0p) or xc + half > min(w - 1, x1p):
+            continue
+        span = max(nb.low_y - nb.high_y, 0.08 * (y1p - y0p))
+        ya = max(y0p, int(nb.high_y - 1.5 * span - 5))
+        yb = min(y1p, int(nb.low_y + 1.5 * span + 5))
+        win = hsv[ya:yb + 1, xc - half:xc + half + 1]
+        hue, sat, val = win[..., 0].astype(int), win[..., 1], win[..., 2]
+        green = (hue >= GREEN_H[0]) & (hue <= GREEN_H[1])
+        red = (hue <= RED_H_LOW) | (hue >= RED_H_HIGH)
+        col = (sat >= 40) & (val >= 90) & (green | red)   # JPEG mutes a 1-px body's saturation
+        widths = col.sum(axis=1)
+        r = int(np.argmax(widths))
+        if widths[r] < max(3, 0.6 * win.shape[1]):
+            continue
+        by = ya + r
+        # must not continue across the gap to the neighbouring slot
+        gx = slice(max(0, xc + half + 2), min(w, xc + int(step) - half - 1)) if xc > nb.xc else \
+            slice(max(0, xc - int(step) + half + 2), max(0, xc - half - 1))
+        outside = hsv[max(0, by - 1):by + 2, gx]
+        if outside.size and ((outside[..., 1] >= 40) & (outside[..., 2] >= 90)).any(axis=0).mean() > 0.5:
+            continue
+        rows = np.where(col.any(axis=1))[0]
+        top, bot = ya + rows[0], ya + rows[-1]
+        bull = bool(green[r].sum() >= red[r].sum())
+        found.append(Candle(xc - half, xc + half, top, bot, by, by, bull))
+    return found
 
 
 def reject_volume_bars(candles: list[Candle], warnings: list[str]) -> list[Candle]:

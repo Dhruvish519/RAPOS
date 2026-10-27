@@ -19,10 +19,11 @@ jobs:
       - name: Install Tesseract (Chart Vision axis OCR)
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
 
-      # requirements.txt only: requirements-dev.txt pulls in PyTorch (the
-      # PyTorch-vs-NumPy LSTM test skips itself when torch isn't installed).
+      # Not requirements-dev.txt: that pulls in PyTorch (the PyTorch-vs-NumPy
+      # LSTM test skips itself when torch isn't installed). matplotlib is
+      # needed because the tests render synthetic charts to digitise.
       - name: Install Python dependencies
-        run: pip install -r backend/requirements.txt pytest httpx
+        run: pip install -r backend/requirements.txt pytest httpx matplotlib
 
       - name: Backend tests
         run: cd backend && python -m pytest -q
