@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
 tests/
+requirements-dev.txt
 cv/results/
 .pytest_cache/

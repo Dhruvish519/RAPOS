@@ -1,0 +1,5 @@
+# The Python backend runs on Render, not Vercel: keep it out of the static site
+backend/
+render.yaml
+*.docx
+*.pdf

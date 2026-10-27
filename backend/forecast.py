@@ -5,49 +5,28 @@ image by Chart Vision).
 The LSTM was trained on one simulated ticker in absolute price units, so a
 digitised series (any price level) is mapped into the model's input range
 window-by-window ("relative-scale transfer"), forecast, and mapped back.
+Inference runs in NumPy (lstm_numpy.py); PyTorch is only needed for training.
 """
 from __future__ import annotations
 
 import os
 
 import numpy as np
-import torch
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "lstm_model.pth")
+import lstm_numpy
+
 SEQ_LEN = 60
 
 # periods per year for annualising volatility, by candle interval
 PERIODS_PER_YEAR = {"1H": 252 * 6.5, "4H": 252 * 6.5 / 4, "1D": 252, "1W": 52, "1M": 12}
 
 
-class StockLSTM(torch.nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
-        super().__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.2)
-        self.fc = torch.nn.Linear(hidden_size, output_size)
-
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-        out, _ = self.lstm(x, (h0, c0))
-        return self.fc(out[:, -1, :])
-
-
-_model = None
-
-
 def load_model():
-    global _model, SEQ_LEN
-    if _model is None and os.path.exists(MODEL_PATH):
-        ck = torch.load(MODEL_PATH, map_location="cpu")
-        m = StockLSTM(ck["input_size"], ck["hidden_size"], ck["num_layers"], ck["output_size"])
-        m.load_state_dict(ck["model_state_dict"])
-        m.eval()
-        SEQ_LEN = ck.get("sequence_length", 60)
-        _model = m
-    return _model
+    global SEQ_LEN
+    m = lstm_numpy.load()
+    if m is not None:
+        SEQ_LEN = m.sequence_length
+    return m
 
 
 def lstm_next(closes: np.ndarray) -> tuple[float | None, str]:
@@ -63,8 +42,7 @@ def lstm_next(closes: np.ndarray) -> tuple[float | None, str]:
     lo, hi = window.min(), window.max()
     span = max(hi - lo, 1e-9)
     scaled = (window - lo) / span * 0.7 + 0.15   # into the model's familiar range
-    with torch.no_grad():
-        y = model(torch.tensor(scaled, dtype=torch.float32).view(1, SEQ_LEN, 1)).item()
+    y = float(model.predict(scaled.reshape(1, SEQ_LEN, 1))[0, 0])
     return float((y - 0.15) / 0.7 * span + lo), note
 
 

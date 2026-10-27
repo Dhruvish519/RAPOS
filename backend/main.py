@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import pandas as pd
 import numpy as np
-import torch
 import os
 import base64
 import functools
@@ -13,6 +12,7 @@ from typing import List, Optional
 import cv2
 import optimizer
 import forecast
+import lstm_numpy
 from cv.chart_digitizer import digitize, OCR_AVAILABLE
 
 # Initialize FastAPI app
@@ -42,26 +42,10 @@ app.add_middleware(
 )
 
 # --- MODEL LOADING ---
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'lstm_model.pth')
+# The LSTM is trained with PyTorch (train_lstm.py) and served with NumPy
+# (lstm_numpy.py): same outputs, ~300 MB less RAM, fits Render's free plan.
 SCALER_PATH = os.path.join(os.path.dirname(__file__), 'data', 'scaler_params.npy')
 DATA_PATH = os.path.join(os.path.dirname(__file__), 'data', 'simulated_stocks.csv')
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-class StockLSTM(torch.nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
-        super(StockLSTM, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.2)
-        self.fc = torch.nn.Linear(hidden_size, output_size)
-        
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        out, _ = self.lstm(x, (h0, c0))
-        out = self.fc(out[:, -1, :])
-        return out
 
 loaded_model = None
 scaler_scale = None
@@ -72,25 +56,16 @@ SEQUENCE_LENGTH = 60
 def load_assets():
     global loaded_model, scaler_scale, scaler_min, SEQUENCE_LENGTH
     try:
-        if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
-            print("RAPOS AI: Loading LSTM model and scaler...")
-            checkpoint = torch.load(MODEL_PATH, map_location=device)
-            loaded_model = StockLSTM(
-                input_size=checkpoint['input_size'],
-                hidden_size=checkpoint['hidden_size'],
-                num_layers=checkpoint['num_layers'],
-                output_size=checkpoint['output_size']
-            ).to(device)
-            loaded_model.load_state_dict(checkpoint['model_state_dict'])
-            loaded_model.eval()
-            SEQUENCE_LENGTH = checkpoint['sequence_length']
-            scaler_params = np.load(SCALER_PATH)
-            scaler_scale = scaler_params[0]
-            scaler_min = scaler_params[1]
-            print("RAPOS AI: Model loaded successfully.")
+        loaded_model = lstm_numpy.load()
+        if loaded_model is not None and os.path.exists(SCALER_PATH):
+            SEQUENCE_LENGTH = loaded_model.sequence_length
+            scaler_scale, scaler_min = np.load(SCALER_PATH)[:2]
+            print("RAPOS AI: LSTM weights loaded (NumPy inference).")
         else:
+            loaded_model = None
             print("RAPOS AI WARNING: Model files not found. Running in simulation fallback mode.")
     except Exception as e:
+        loaded_model = None
         print(f"RAPOS AI Error loading model: {e}")
 
 # --- AI ENDPOINTS ---
@@ -129,10 +104,7 @@ def predict_risk(ticker: str = 'SPXX'):
             
         recent_data = df_ticker['Close'].values[-SEQUENCE_LENGTH:]
         scaled_inputs = recent_data * scaler_scale + scaler_min
-        input_tensor = torch.tensor(scaled_inputs, dtype=torch.float32).view(1, SEQUENCE_LENGTH, 1).to(device)
-        
-        with torch.no_grad():
-            scaled_prediction = loaded_model(input_tensor).item()
+        scaled_prediction = float(loaded_model.predict(scaled_inputs.reshape(1, SEQUENCE_LENGTH, 1))[0, 0])
             
         predicted_price = (scaled_prediction - scaler_min) / scaler_scale
         recent_returns = pd.Series(recent_data).pct_change().dropna()

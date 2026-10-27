@@ -1,0 +1,17 @@
+# Render Blueprint for the RAPOS AI backend (FastAPI + OpenCV + PyTorch).
+# Render dashboard -> New -> Blueprint -> pick this repo. Render reads this file,
+# builds backend/Dockerfile (which installs Tesseract for Chart Vision OCR) and
+# asks for the secret below.
+services:
+  - type: web
+    name: rapos-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: FINNHUB_API_KEY   # free key from https://finnhub.io (live prices/news)
+        sync: false            # entered in the Render dashboard, never committed

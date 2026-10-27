@@ -32,6 +32,10 @@ RAPOS is a portfolio web app with an AI backend. Version 3 adds two modules:
 | Exact candle count, 40 / 90 / 160 candles, JPEG | 95% / 87% / 41% |
 | Mean time per image | 2.1 s |
 
+## LSTM serving
+
+The LSTM is trained with PyTorch (`train_lstm.py`) and exported to `lstm_weights.npz` (`export_lstm_weights.py`). The API runs it with NumPy (`lstm_numpy.py`), which matches PyTorch to within 1e-7 and saves about 300 MB of RAM. PyTorch is only needed to retrain.
+
 ## Optimiser
 
 - Expected returns: annualised mean daily returns, shrunk toward the cross-asset average by 252/(n+252) for n observations, so short histories are trusted less.
@@ -51,14 +55,23 @@ RAPOS is a portfolio web app with an AI backend. Version 3 adds two modules:
 | GET | `/api/rebalance` | dashboard rebalancer (unchanged response format, now optimiser-backed) |
 | GET | `/api/health` | service, OCR, model and market-data status |
 
+## Deploy (Render backend + Vercel frontend)
+
+1. **Backend on Render**: Render dashboard → **New → Blueprint** → choose this repo. `render.yaml` builds `backend/Dockerfile` (FastAPI, OpenCV, Tesseract for axis OCR; the LSTM runs in NumPy, so the service uses ~230 MB and fits the free plan). Enter `FINNHUB_API_KEY` when asked (optional; live prices and news). When it's live, open `https://<your-service>.onrender.com/api/health`.
+2. **Point the site at it**: put that URL in `PROD_API` in `js/rapos-config.js` and push. It is the only place the backend URL is set.
+3. **Frontend on Vercel**: Vercel → **Add New → Project** → import this repo → Framework "Other", no build command, root `./`. Every push to `main` redeploys; other branches get preview URLs.
+4. **Supabase login**: in the Supabase project, Authentication → URL Configuration, add the Vercel URL as Site URL / redirect URL so sign-up confirmation links work.
+
+Render's free plan sleeps after ~15 minutes idle; the first request then takes ~30-60 s, and the pages say so.
+
 ## Run locally
 
 ```bash
 cd backend
-pip install -r requirements.txt        # plus the Tesseract binary for axis OCR (apt install tesseract-ocr / brew install tesseract)
+pip install -r requirements-dev.txt    # server deps + PyTorch (training), pytest; plus the Tesseract binary for axis OCR (apt install tesseract-ocr / brew install tesseract)
 export FINNHUB_API_KEY=your_key         # optional, for live prices and news
 uvicorn main:app --reload               # http://localhost:8000/docs
-python -m pytest -q                     # 18 tests
+python -m pytest -q                     # 20 tests
 ```
 
 Serve the frontend from the repo root (e.g. `python -m http.server 5500`) and open `chart-vision.html` or `optimizer.html`. Pages served from localhost use the local backend automatically; add `?api=https://...` to point elsewhere.

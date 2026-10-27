@@ -1,0 +1,11 @@
+# Dev extras: retraining the LSTM, the Chart Vision benchmark, and tests.
+#   pip install -r requirements-dev.txt
+#   python train_lstm.py && python export_lstm_weights.py   # retrain + export for NumPy serving
+#   python -m cv.evaluate                                   # digitiser benchmark
+#   python -m pytest -q                                     # tests
+-r requirements.txt
+torch
+matplotlib
+mplfinance
+pytest
+httpx

@@ -149,3 +149,26 @@ def test_api_validation(client):
                     data={"price_high": "100"})
     assert r.status_code == 400
     assert client.get("/api/optimize", params={"max_weight": 5}).status_code == 400
+
+
+# ------------------------------------------------------------------ LSTM serving
+def test_numpy_lstm_matches_pytorch():
+    torch = pytest.importorskip("torch")   # training-only dependency
+    import lstm_numpy
+    from export_lstm_weights import HERE
+    ck = torch.load(os.path.join(HERE, "lstm_model.pth"), map_location="cpu")
+    lstm = torch.nn.LSTM(ck["input_size"], ck["hidden_size"], ck["num_layers"], batch_first=True)
+    fc = torch.nn.Linear(ck["hidden_size"], ck["output_size"])
+    sd = ck["model_state_dict"]
+    lstm.load_state_dict({k[5:]: v for k, v in sd.items() if k.startswith("lstm.")})
+    fc.load_state_dict({k[3:]: v for k, v in sd.items() if k.startswith("fc.")})
+    x = np.random.default_rng(1).uniform(0, 1, (8, 60, 1))
+    with torch.no_grad():
+        out, _ = lstm(torch.tensor(x, dtype=torch.float32))
+        ref = fc(out[:, -1]).numpy()
+    assert np.abs(lstm_numpy.NumpyLSTM().predict(x) - ref).max() < 1e-5
+
+
+def test_api_predict_risk_uses_model(client):
+    j = client.get("/api/predict-risk", params={"ticker": "SPXX"}).json()
+    assert j["is_simulated"] is False and j["model_type"] == "LSTM Neural Network"

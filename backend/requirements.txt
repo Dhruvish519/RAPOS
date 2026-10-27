@@ -4,7 +4,6 @@ pandas
 numpy
 scikit-learn
 scipy
-torch
 python-multipart
 finnhub-python
 opencv-python-headless
