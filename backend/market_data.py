@@ -242,10 +242,16 @@ def _native_quote(s: str, sources, hit) -> dict:
 def quotes(symbols: list[str]) -> dict[str, dict]:
     syms = list(dict.fromkeys(normalise(s) for s in symbols if s.strip()))
     futs = {s: _pool.submit(quote, s) for s in syms}
-    out = {}
+    out, failed = {}, []
     for s, f in futs.items():
         try:
             out[s] = f.result()
+        except Exception:
+            failed.append(s)
+    # Yahoo throttles bursts of parallel requests: retry failures one by one
+    for s in failed:
+        try:
+            out[s] = quote(s)
         except Exception as e:
             out[s] = {"ticker": s, "error": str(e)}
     return out

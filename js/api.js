@@ -41,6 +41,7 @@ const RAPOS_API = {
                 const q = quotes[t];
                 if (q && !q.error) {
                     return { ...asset, current_price: q.price, live_value: (asset.quantity || 0) * q.price,
+                             native_price: q.native_price || q.price, currency: q.currency || 'USD',
                              performance_pct: +(q.percent_change || 0).toFixed(2), is_live: true,
                              price_source: q.source, stale: !!q.stale };
                 }

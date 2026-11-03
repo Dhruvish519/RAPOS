@@ -95,8 +95,8 @@ const RAPOS_UI = {
         this.state.activeTab = tabId;
 
         // Tab-specific initializations
-        if (tabId === 'marketTab') {
-            this.initTradingView();
+        if (tabId === 'marketTab' && typeof window.initMarketHub === 'function') {
+            window.initMarketHub();
         }
     },
 
@@ -130,7 +130,9 @@ const RAPOS_UI = {
                     <div style="width:48px; height:48px; background:var(--slate-100); border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--brand-primary); font-size:12px;">${(h.ticker || 'AST').substring(0,4)}</div>
                     <div>
                         <div style="font-weight:700; color:var(--slate-900);">${h.asset_name || h.ticker}</div>
-                        <div style="font-size:12px; color:var(--slate-500);">${h.ticker === 'CASH' ? 'Cash balance' : `${h.quantity || 0} units @ ${h.current_price == null ? '<span style="color:var(--danger)">price unavailable</span>' : '$' + h.current_price.toLocaleString(undefined, {maximumFractionDigits: 2})}${h.stale ? ' (delayed)' : ''}`}</div>
+                        <div style="font-size:12px; color:var(--slate-500);">${h.ticker === 'CASH' ? 'Cash balance' : `${h.quantity || 0} units @ ${h.current_price == null ? '<span style="color:var(--danger)">price unavailable</span>'
+                            : h.currency === 'INR' ? '₹' + h.native_price.toLocaleString(undefined, {maximumFractionDigits: 2}) + ' (≈ $' + h.current_price.toLocaleString(undefined, {maximumFractionDigits: 2}) + ')'
+                            : '$' + h.current_price.toLocaleString(undefined, {maximumFractionDigits: 2})}${h.stale ? ' (delayed)' : ''}`}</div>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:24px;">
@@ -299,42 +301,4 @@ const RAPOS_UI = {
         }, 3000);
     },
 
-    /**
-     * Market Visuals
-     */
-    initTradingView() {
-        const container = document.getElementById('tradingview_widget');
-        if (!container) return;
-
-        // Only initialize once
-        if (container.dataset.loaded === 'true') return;
-
-        if (typeof TradingView !== 'undefined') {
-            container.innerHTML = '';
-            new TradingView.widget({
-                "autosize": true,
-                "symbol": "NASDAQ:AAPL",
-                "interval": "D",
-                "timezone": "Etc/UTC",
-                "theme": "light",
-                "style": "1",
-                "locale": "en",
-                "toolbar_bg": "#f1f5f9",
-                "enable_publishing": false,
-                "allow_symbol_change": true,
-                "container_id": "tradingview_widget"
-            });
-            container.dataset.loaded = 'true';
-        } else {
-            // High-reliability embed fallback
-            container.innerHTML = `
-                <iframe 
-                    src="https://s.tradingview.com/widgetembed/?symbol=NASDAQ%3AAAPL&interval=D&symboledit=1&saveimage=0&toolbarbg=f1f5f9&studies=%5B%5D&theme=light&style=1&timezone=Etc%2FUTC" 
-                    style="width:100%; height:100%; border:none; border-radius:12px;"
-                    title="TradingView Chart">
-                </iframe>
-            `;
-            container.dataset.loaded = 'true';
-        }
-    }
 };

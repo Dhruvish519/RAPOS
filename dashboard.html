@@ -6,9 +6,8 @@
     <title>Dashboard | RAPOS</title>
     <link rel="stylesheet" href="s1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         // Early global switchTab definition - ensures tabs ALWAYS switch regardless of load timing
         window.switchTab = function(tabId, element) {
@@ -40,9 +39,7 @@
 
             // Tab specific loaders
             if (tabId === 'marketTab') {
-                if (window.RAPOS_UI && typeof window.RAPOS_UI.initTradingView === 'function') {
-                    window.RAPOS_UI.initTradingView();
-                }
+                if (typeof window.initMarketHub === 'function') window.initMarketHub();
             } else if (tabId === 'rebalancerTab') {
                 if (typeof window.fetchRebalanceReport === 'function') {
                     window.fetchRebalanceReport();
@@ -213,21 +210,34 @@
             </div>
         </div>
 
-        <!-- Market Tab -->
+        <!-- Market Hub: RAPOS's own chart (cached real prices) + live news -->
         <div id="marketTab" class="tab-view" style="display:none;">
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; min-height: 600px;">
-                <div class="card" style="padding: 16px; min-height: 600px; display:flex; flex-direction:column;">
-                    <div class="card-title" style="margin-bottom:12px;">
-                        <i class="fas fa-chart-area" style="color:var(--brand-primary); margin-right:8px;"></i> Real-Time Technical Terminal
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                <div class="card" style="display:flex; flex-direction:column; min-width:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+                        <div class="card-title" style="margin:0;"><i class="fas fa-chart-line" style="color:var(--brand-primary); margin-right:8px;"></i> <span id="mhTitle">Price chart</span></div>
+                        <a id="mhTv" href="https://www.tradingview.com/chart/" target="_blank" rel="noopener" style="font-size:12px; font-weight:700; color:var(--brand-primary); text-decoration:none;">Open in TradingView <i class="fas fa-arrow-up-right-from-square"></i></a>
                     </div>
-                    <div id="tradingview_widget" style="width: 100%; height: 530px; min-height: 500px; border-radius: 12px; overflow: hidden;"></div>
+                    <div style="position:relative; margin-bottom:10px;">
+                        <input id="mhSearch" type="text" class="input-field" style="margin:0;" placeholder="Search any stock, ETF or crypto: Apple, Infosys, Nifty BeES, Bitcoin..." autocomplete="off">
+                        <div id="mhList"></div>
+                    </div>
+                    <div id="mhChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;"></div>
+                    <div style="display:flex; gap:6px; margin-bottom:12px;" id="mhRanges">
+                        <button class="btn btn-secondary" data-d="30" style="padding:6px 12px; font-size:12px;">1M</button>
+                        <button class="btn btn-secondary" data-d="90" style="padding:6px 12px; font-size:12px;">3M</button>
+                        <button class="btn btn-secondary" data-d="182" style="padding:6px 12px; font-size:12px;">6M</button>
+                        <button class="btn btn-secondary active" data-d="365" style="padding:6px 12px; font-size:12px;">1Y</button>
+                        <button class="btn btn-secondary" data-d="730" style="padding:6px 12px; font-size:12px;">2Y</button>
+                    </div>
+                    <div id="mhStats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:12px;"></div>
+                    <div style="position:relative; height:360px;"><canvas id="mhChart"></canvas>
+                        <div id="mhLoading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--slate-400); font-size:13px;">Pick an asset to chart.</div></div>
                 </div>
-                <div class="card" style="padding: 0; display:flex; flex-direction:column; min-height: 600px;">
-                    <div class="card-title" style="padding: 24px; margin-bottom:0; border-bottom: 1px solid var(--slate-100);">
-                        <i class="fas fa-newspaper" style="color:var(--brand-secondary); margin-right:8px;"></i> Global Intelligence Feed
-                    </div>
-                    <div id="newsFeed" style="flex:1; overflow-y:auto; max-height: 530px;">
-                        <div style="padding:40px; text-align:center; color:var(--slate-400);">Filtering noise...</div>
+                <div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+                    <div class="card-title" style="padding:24px 24px 8px;"><i class="fas fa-newspaper" style="color:var(--brand-secondary); margin-right:8px;"></i> Market News</div>
+                    <div id="newsFeed" style="overflow-y:auto; max-height:640px;">
+                        <div style="padding:20px 24px; color:var(--slate-400); font-size:13px;">Loading news...</div>
                     </div>
                 </div>
             </div>
@@ -319,6 +329,7 @@
 <script src="supabase-client.js"></script>
 <script src="js/live-ticker.js"></script>
 <script src="js/symbols.js"></script>
+<script src="js/symbol-search.js"></script>
 <script src="js/api.js"></script>
 <script src="js/ui.js"></script>
 <script>
@@ -399,16 +410,17 @@
                 <button type="button" class="btn btn-secondary" id="modeCash" style="flex:1;">Cash</button>
             </div>
             <div id="assetFields">
-                ${L("Search by company name or ticker")}
+                ${L("Search by company name or ticker (US, India NSE/BSE, crypto)")}
                 <div style="position:relative;">
-                    <input id="symSearch" type="text" class="input-field" style="margin:0;" placeholder="e.g. Apple, Nvidia, S&P 500, Bitcoin" autocomplete="off">
-                    <div id="symList" style="display:none; position:absolute; left:0; right:0; top:100%; margin-top:4px; background:white; border:1px solid var(--slate-200); border-radius:12px; box-shadow:0 12px 30px rgba(15,23,42,.12); max-height:260px; overflow-y:auto; z-index:10;"></div>
+                    <input id="symSearch" type="text" class="input-field" style="margin:0;" placeholder="e.g. Apple, Infosys, Reliance, Nifty BeES, Bitcoin" autocomplete="off">
+                    <div id="symList"></div>
                 </div>
                 <div id="symPicked" style="display:none; margin-top:12px; padding:12px 14px; background:var(--slate-50); border:1px solid var(--slate-200); border-radius:12px;"></div>
                 <div style="display:grid; grid-template-columns:auto 1fr; gap:12px; margin-top:16px; align-items:end;">
-                    <div>${L("Enter")}<select id="amtMode" class="input-field" style="margin:0;"><option value="qty">Shares / coins</option><option value="usd">Dollar amount</option></select></div>
-                    <div>${L("Amount")}<input id="addAmount" type="number" step="any" min="0" class="input-field" style="margin:0;" placeholder="e.g. 10"></div>
+                    <div>${L("Enter")}<select id="amtMode" class="input-field" style="margin:0;"><option value="qty">Shares / coins</option><option value="money">Amount of money</option></select></div>
+                    <div>${L("<span id='amtLabel'>Amount</span>")}<input id="addAmount" type="number" step="any" min="0" class="input-field" style="margin:0;" placeholder="e.g. 10"></div>
                 </div>
+                <div id="amtHint" style="font-size:12px; color:var(--slate-500); margin-top:6px;"></div>
             </div>
             <div id="cashFields" style="display:none;">
                 ${L("Cash amount (USD)")}<input id="cashAmount" type="number" step="any" min="0" class="input-field" style="margin:0;" placeholder="e.g. 2500">
@@ -417,9 +429,8 @@
             <div id="addCheck" style="font-size:13px; color:var(--slate-500); min-height:18px; margin-top:12px;"></div>
         `, "Add Holding", saveHolding);
 
-        let picked = null, mode = "asset", timer = null, seq = 0;
+        let picked = null, mode = "asset";
         const $ = id => document.getElementById(id);
-        const typeLabel = { Stock: "Stock", ETF: "ETF / Fund", Crypto: "Crypto" };
         const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
         const setMode = m => {
             mode = m;
@@ -430,62 +441,34 @@
         $("modeAsset").onclick = () => setMode("asset");
         $("modeCash").onclick = () => setMode("cash");
 
-        function render(items, note) {
-            const list = $("symList");
-            if (!items.length) { list.innerHTML = `<div style="padding:12px 14px; font-size:13px; color:var(--slate-400);">${note || "No matches"}</div>`; list.style.display = ""; return; }
-            list.innerHTML = items.map((it, i) => `<div class="sym-opt" data-i="${i}" style="padding:10px 14px; cursor:pointer; display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--slate-100);">
-                <div><div style="font-weight:700; color:var(--slate-900);">${esc(it.name)}</div><div style="font-size:12px; color:var(--slate-500);">${esc(it.symbol)}${it.exchange ? " · " + esc(it.exchange) : ""}</div></div>
-                <span style="font-size:11px; font-weight:700; color:var(--brand-primary); align-self:center; white-space:nowrap;">${typeLabel[it.type] || it.type}</span></div>`).join("") +
-                (note ? `<div style="padding:8px 14px; font-size:12px; color:var(--slate-400);">${note}</div>` : "");
-            list.style.display = "";
-            list.querySelectorAll(".sym-opt").forEach(el => {
-                el.onmouseenter = () => el.style.background = "var(--slate-50)";
-                el.onmouseleave = () => el.style.background = "";
-                el.onmousedown = e => { e.preventDefault(); pick(items[+el.dataset.i]); };
-            });
+        const sym = () => RAPOS_currencySymbol(picked ? picked.currency : "USD");
+        function updateHint() {
+            const amt = parseFloat($("addAmount").value), money = $("amtMode").value === "money";
+            $("amtLabel").textContent = money ? `Amount (${sym()})` : "Shares / coins";
+            if (!picked || !picked.native_price || !(amt > 0)) { $("amtHint").textContent = ""; return; }
+            const qty = money ? amt / picked.native_price : amt;
+            const native = qty * picked.native_price, usd = qty * picked.price;
+            $("amtHint").textContent = `= ${(+qty.toFixed(6)).toLocaleString()} ${picked.type === "Crypto" ? "coins" : "shares"} worth ${sym()}${native.toLocaleString(undefined, {maximumFractionDigits: 2})}` +
+                (picked.currency === "INR" ? ` (≈ $${usd.toLocaleString(undefined, {maximumFractionDigits: 2})})` : "");
         }
-        function localMatches(q) {
-            q = q.toLowerCase();
-            return (window.RAPOS_SYMBOLS || []).filter(it => it.symbol.toLowerCase().startsWith(q) || it.name.toLowerCase().includes(q))
-                .sort((a, b) => (b.symbol.toLowerCase() === q) - (a.symbol.toLowerCase() === q)).slice(0, 8);
-        }
-        $("symSearch").addEventListener("input", () => {
-            picked = null; $("symPicked").style.display = "none";
-            const q = $("symSearch").value.trim();
-            if (!q) { $("symList").style.display = "none"; return; }
-            const local = localMatches(q);
-            render(local, "Searching all US stocks, ETFs and crypto...");
-            clearTimeout(timer);
-            const my = ++seq;
-            timer = setTimeout(async () => {
-                let remote = [];
-                try { const r = await fetch(`${API_BASE_URL}/api/search-stocks?q=${encodeURIComponent(q)}`); if (r.ok) remote = (await r.json()).results || []; } catch (e) {}
-                if (my !== seq) return;          // a newer search is running
-                const seen = new Set(local.map(i => i.symbol));
-                render([...local, ...remote.filter(i => !seen.has(i.symbol))].slice(0, 10), remote.length || local.length ? "" : "No matches. Try the company name or ticker.");
-            }, 250);
-        });
-        $("symSearch").addEventListener("blur", () => setTimeout(() => $("symList").style.display = "none", 150));
-        $("symSearch").addEventListener("keydown", e => {
-            if (e.key === "Enter") { e.preventDefault(); const first = document.querySelector("#symList .sym-opt"); if (first) first.dispatchEvent(new MouseEvent("mousedown")); }
-        });
+        $("amtMode").onchange = updateHint; $("addAmount").oninput = updateHint;
 
-        async function pick(it) {
-            picked = { ...it, price: null };
-            $("symSearch").value = `${it.name} (${it.symbol})`;
-            $("symList").style.display = "none";
+        RAPOS_attachSymbolSearch($("symSearch"), $("symList"), async it => {
+            picked = { ...it, currency: it.currency || RAPOS_currencyOf(it.symbol), price: null };
             const box = $("symPicked");
             box.style.display = "";
-            box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)} · ${typeLabel[it.type] || it.type}<div style="font-size:13px; color:var(--slate-500); margin-top:4px;"><i class="fas fa-circle-notch fa-spin"></i> Getting live price...</div>`;
+            box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)} · ${esc(RAPOS_symbolLabel(it))}<div style="font-size:13px; color:var(--slate-500); margin-top:4px;"><i class="fas fa-circle-notch fa-spin"></i> Getting live price...</div>`;
             const q = await RAPOS_API.checkTicker(it.symbol).catch(() => null);
             if (!picked || picked.symbol !== it.symbol) return;
             if (!q) { box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)}<div style="font-size:13px; color:var(--danger); margin-top:4px;">No live price available for this listing. Pick another result.</div>`; picked = null; return; }
-            picked.price = q.current_price;
-            box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)} · ${typeLabel[it.type] || it.type}
-                <div style="font-size:13px; color:var(--slate-600); margin-top:4px;">Live price <b>$${q.current_price.toLocaleString()}</b>
+            Object.assign(picked, { price: q.current_price, native_price: q.native_price || q.current_price, currency: q.currency || picked.currency });
+            const p = `${sym()}${picked.native_price.toLocaleString()}` + (picked.currency === "INR" ? ` (≈ $${q.current_price.toLocaleString()})` : "");
+            box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)} · ${esc(RAPOS_symbolLabel(it))}
+                <div style="font-size:13px; color:var(--slate-600); margin-top:4px;">Live price <b>${p}</b>
                 <span class="${q.percent_change >= 0 ? "trend-up" : "trend-down"}">(${q.percent_change >= 0 ? "+" : ""}${q.percent_change}% today)</span></div>`;
+            updateHint();
             $("addAmount").focus();
-        }
+        });
 
         async function saveHolding() {
             const check = $("addCheck");
@@ -499,8 +482,8 @@
                 if (!picked) return fail("Search for an investment and pick it from the list.");
                 if (!picked.price) return fail("Waiting for the live price; try again in a moment.");
                 const amt = parseFloat($("addAmount").value);
-                if (!(amt > 0)) return fail("Enter how many shares, or a dollar amount.");
-                const qty = $("amtMode").value === "usd" ? amt / picked.price : amt;
+                if (!(amt > 0)) return fail("Enter how many shares, or an amount of money.");
+                const qty = $("amtMode").value === "money" ? amt / picked.native_price : amt;
                 asset = { ticker: picked.symbol, asset_name: picked.name, asset_type: picked.type === "Stock" ? "Stocks" : picked.type, quantity: +qty.toFixed(6) };
             }
             try {
@@ -509,6 +492,73 @@
             } catch (e) { fail("Could not save: " + e.message); }
         }
         setTimeout(() => $("symSearch").focus(), 50);
+    };
+
+    // ---- Market Hub: RAPOS's own price chart + news ----------------------
+    const mh = { chart: null, item: null, days: 365, ready: false };
+    const tvSymbol = s => s.endsWith(".NS") ? "NSE:" + s.slice(0, -3) : s.endsWith(".BO") ? "BSE:" + s.slice(0, -3)
+        : (window.RAPOS_SYMBOLS || []).some(x => x.symbol === s && x.type === "Crypto") ? s + "USD" : s;
+    async function mhLoad(item) {
+        mh.item = item;
+        const $ = id => document.getElementById(id);
+        $("mhTitle").textContent = `${item.name} (${item.symbol})`;
+        $("mhTv").href = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(tvSymbol(item.symbol));
+        $("mhLoading").style.display = "flex"; $("mhLoading").innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>&nbsp; Loading prices...';
+        try {
+            const [h, q] = await Promise.all([
+                fetch(`${API_BASE_URL}/api/history?ticker=${encodeURIComponent(item.symbol)}&days=${mh.days}`).then(r => r.ok ? r.json() : Promise.reject(new Error("No price history for " + item.symbol))),
+                RAPOS_API.checkTicker(item.symbol).catch(() => null)]);
+            if (mh.item !== item) return;                 // user picked something else meanwhile
+            const cur = RAPOS_currencySymbol(h.currency), st = h.stats;
+            const fmt = v => cur + v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+            const last = q ? (q.native_price || q.current_price) : h.closes[h.closes.length - 1];
+            const tile = (k, v, c) => `<div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:10px; padding:8px 10px;">
+                <div style="font-size:10px; font-weight:700; color:var(--slate-400); text-transform:uppercase;">${k}</div><div style="font-size:15px; font-weight:800; color:${c || "var(--slate-900)"};">${v}</div></div>`;
+            $("mhStats").innerHTML = [
+                tile("Live price", fmt(last) + (q ? ` <span style="font-size:11px; color:${q.percent_change >= 0 ? "var(--success)" : "var(--danger)"}">${q.percent_change >= 0 ? "+" : ""}${q.percent_change}%</span>` : "")),
+                tile("Return", (st.return_pct >= 0 ? "+" : "") + st.return_pct + "%", st.return_pct >= 0 ? "var(--success)" : "var(--danger)"),
+                tile("Volatility", (st.volatility_pct ?? "--") + "%"),
+                tile("Max drawdown", st.max_drawdown_pct + "%", "var(--danger)"),
+                tile("Range", fmt(st.low) + " &ndash; " + fmt(st.high)),
+            ].join("");
+            const up = h.closes[h.closes.length - 1] >= h.closes[0], color = up ? "#10b981" : "#ef4444";
+            if (mh.chart) mh.chart.destroy();
+            mh.chart = new Chart(document.getElementById("mhChart"), {
+                type: "line",
+                data: { labels: h.dates, datasets: [{ data: h.closes, borderColor: color, backgroundColor: color + "1a", fill: true, pointRadius: 0, borderWidth: 2, tension: 0.15 }] },
+                options: { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: "index", intersect: false },
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => " " + fmt(c.raw) } } },
+                    scales: { x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { callback: v => cur + v.toLocaleString() } } } }
+            });
+            $("mhLoading").style.display = "none";
+        } catch (e) {
+            if (mh.item !== item) return;
+            $("mhLoading").style.display = "flex";
+            $("mhLoading").textContent = e.message === "Failed to fetch" ? "Backend is waking up; try again in a minute." : e.message;
+        }
+    }
+    function mhChips() {
+        const held = (RAPOS_UI.state.holdings || []).filter(h => h.ticker && h.ticker.toUpperCase() !== "CASH");
+        const seen = new Set();
+        const items = [...held.map(h => ({ symbol: h.ticker.toUpperCase(), name: h.asset_name || h.ticker })),
+                       { symbol: "SPY", name: "S&P 500 ETF" }, { symbol: "NIFTYBEES.NS", name: "Nifty 50 ETF" }, { symbol: "BTC", name: "Bitcoin" }]
+            .filter(i => !seen.has(i.symbol) && seen.add(i.symbol)).slice(0, 10);
+        const box = document.getElementById("mhChips");
+        box.innerHTML = items.map((i, k) => `<button class="btn btn-secondary" data-k="${k}" style="padding:5px 10px; font-size:12px;">${i.symbol.replace(/\.(NS|BO)$/, "")}</button>`).join("");
+        box.querySelectorAll("button").forEach(b => b.onclick = () => { document.getElementById("mhSearch").value = ""; mhLoad(items[+b.dataset.k]); });
+        return items;
+    }
+    window.initMarketHub = function () {
+        const items = mhChips();
+        if (!mh.ready) {
+            mh.ready = true;
+            RAPOS_attachSymbolSearch(document.getElementById("mhSearch"), document.getElementById("mhList"), mhLoad);
+            document.querySelectorAll("#mhRanges button").forEach(b => b.onclick = () => {
+                document.querySelectorAll("#mhRanges button").forEach(x => x.classList.toggle("active", x === b));
+                mh.days = +b.dataset.d; if (mh.item) mhLoad(mh.item);
+            });
+        }
+        if (!mh.item && items.length) mhLoad(items[0]);
     };
 
     // Keep prices live while the page is open (the backend caches quotes for 30 s)
@@ -587,6 +637,7 @@
         h1("Summary");
         para(`Portfolio value: ${money(d.total_value - (d.new_funds || 0))}` + (d.new_funds ? `  +  new money to invest: ${money(d.new_funds)}  =  ${money(d.total_value)}` : ""));
         para(STRATEGY[d.profile]);
+        if (d.holdings.some(h => h.currency === "INR")) para("Indian holdings are priced in rupees and converted to US dollars at the live USD/INR rate; their risk includes currency moves.", 9);
 
         h1("Risk: now vs. after the plan");
         const c = d.current, r = d.recommended;
@@ -600,7 +651,7 @@
 
         h1("Holdings");
         table(["Asset", "Quantity", "Price", "Value", "Weight", "Share of risk"],
-            d.holdings.map(h => [nm(h.ticker), h.ticker === "CASH" ? "" : (+h.quantity.toFixed(4)).toLocaleString(), h.ticker === "CASH" ? "" : "$" + h.price.toLocaleString(undefined, {maximumFractionDigits: 2}),
+            d.holdings.map(h => [nm(h.ticker), h.ticker === "CASH" ? "" : (+h.quantity.toFixed(4)).toLocaleString(), h.ticker === "CASH" ? "" : h.currency === "INR" ? "Rs " + h.native_price.toLocaleString(undefined, {maximumFractionDigits: 2}) : "$" + h.price.toLocaleString(undefined, {maximumFractionDigits: 2}),
                                  money(h.value), pct(h.weight), pct(Math.max(0, c.risk_contribution[h.ticker] || 0), 0)]),
             [36, 28, 28, 30, 26, 30]);
 

@@ -59,6 +59,8 @@ The LSTM is trained with PyTorch (`train_lstm.py`) and exported to `lstm_weights
 | POST | `/api/optimize` | same, with `custom_assets: [{name, closes}]` |
 | POST | `/api/analyze-series` | risk metrics + LSTM signal for a list of closes |
 | POST | `/api/portfolio/analyze` | `{holdings: [{ticker, quantity} or {ticker, value}], profile}` → current risk, optimal mix, trades (real market data) |
+| GET | `/api/history?ticker=&days=` | daily closes + return/volatility/drawdown (Market Hub chart) |
+| GET | `/api/search-stocks?q=` | search by company name or ticker (US, NSE/BSE, crypto) |
 | GET | `/api/quotes?tickers=AAPL,MSFT,BTC` | batched live prices (Finnhub, Yahoo fallback) |
 | GET | `/api/live-price?ticker=` | one live price |
 | GET | `/api/rebalance` | older demo rebalancer on the simulated universe (kept for compatibility) |
@@ -93,7 +95,7 @@ Serve the frontend from the repo root (e.g. `python -m http.server 5500`) and op
 
 - Very dense charts (more than ~120 candles across a normal screenshot) combined with JPEG compression can miss or merge a few candles; the app warns and suggests zooming in.
 - Line charts, Heikin-Ashi and bar (OHLC tick) charts are not supported.
-- Market data: price history comes from Yahoo Finance's public chart API (Stooq as fallback); these are free, unofficial sources and can rate-limit. Quotes come from Finnhub (free key). US tickers and major crypto (BTC, ETH, ...) are supported.
+- Market data: price history comes from Yahoo Finance's public chart API (Stooq as fallback); these are free, unofficial sources and can rate-limit. Quotes come from Finnhub (free key). Supported: US stocks/ETFs, Indian NSE/BSE listings (`RELIANCE.NS`, `TCS.BO`; priced in rupees, converted to US dollars with the daily USD/INR rate so currency risk is included) and major crypto (BTC, ETH, ...).
 - The LSTM next-close forecast was tested on 640 points of random-walk prices: its error was about twice that of a "no change" guess (2.4 % vs 1.2 %) and it called direction 48 % of the time. The app therefore no longer shows LSTM predictions; Chart Vision reports the volatility-based range of the next candle instead (68 % / 95 %), and the dashboard shows the risk of your actual portfolio. The model and `/api/predict-risk` remain for reference.
 
 
