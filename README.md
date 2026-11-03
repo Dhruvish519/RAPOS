@@ -46,7 +46,9 @@ The LSTM is trained with PyTorch (`train_lstm.py`) and exported to `lstm_weights
 - Covariance: Ledoit-Wolf shrinkage.
 - Portfolios (long-only, optional per-asset cap): minimum variance, maximum Sharpe, and the risk-profile portfolio (highest return at the profile's target volatility: Conservative 5%, Moderate 10%, Aggressive 18%).
 - Assets read by Chart Vision can be added to the optimisation ("Add to optimiser").
-- The built-in universe (`backend/data/asset_universe.csv`, made by `generate_asset_universe.py`) is **simulated** data calibrated to typical long-run asset-class returns, volatilities and correlations.
+- **Your real portfolio** (dashboard → Rebalancer, and the Optimiser page's "Real tickers" mode): 2 years of real daily prices for your holdings, plus a cash asset earning the risk-free rate. RAPOS reports the portfolio's current volatility, expected return, Sharpe ratio, maximum drawdown, 1-day 95 % historical VaR and each holding's share of risk, then the optimal mix for your profile and the exact trades (dollars and shares) to reach it. "Apply" updates the quantities RAPOS tracks; it never places real orders.
+- Speed: analytic gradients for the SLSQP solver and a warm-started frontier (about 8× faster than finite differences); market data is fetched in parallel and cached (history 6 h, quotes 30 s), and popular symbols are pre-loaded at startup.
+- The built-in demo universe (`backend/data/asset_universe.csv`, made by `generate_asset_universe.py`) is **simulated** data calibrated to typical long-run asset-class returns, volatilities and correlations.
 
 ## API (v3)
 
@@ -56,7 +58,10 @@ The LSTM is trained with PyTorch (`train_lstm.py`) and exported to `lstm_weights
 | GET | `/api/optimize?profile=&risk_free=&max_weight=` | optimise the built-in universe |
 | POST | `/api/optimize` | same, with `custom_assets: [{name, closes}]` |
 | POST | `/api/analyze-series` | risk metrics + LSTM signal for a list of closes |
-| GET | `/api/rebalance` | dashboard rebalancer (unchanged response format, now optimiser-backed) |
+| POST | `/api/portfolio/analyze` | `{holdings: [{ticker, quantity} or {ticker, value}], profile}` → current risk, optimal mix, trades (real market data) |
+| GET | `/api/quotes?tickers=AAPL,MSFT,BTC` | batched live prices (Finnhub, Yahoo fallback) |
+| GET | `/api/live-price?ticker=` | one live price |
+| GET | `/api/rebalance` | older demo rebalancer on the simulated universe (kept for compatibility) |
 | GET | `/api/health` | service, OCR, model and market-data status |
 
 ## Deploy (Render backend + Vercel frontend)
@@ -88,6 +93,7 @@ Serve the frontend from the repo root (e.g. `python -m http.server 5500`) and op
 
 - Very dense charts (more than ~120 candles across a normal screenshot) combined with JPEG compression can miss or merge a few candles; the app warns and suggests zooming in.
 - Line charts, Heikin-Ashi and bar (OHLC tick) charts are not supported.
+- Market data: price history comes from Yahoo Finance's public chart API (Stooq as fallback); these are free, unofficial sources and can rate-limit. Quotes come from Finnhub (free key). US tickers and major crypto (BTC, ETH, ...) are supported.
 - The LSTM next-close signal does not beat a "no change" baseline on random-walk data; RAPOS shows both and treats it as experimental. The volatility-based risk metrics carry the useful information.
 
 ---

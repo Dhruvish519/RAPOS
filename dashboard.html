@@ -245,26 +245,43 @@
             </div>
         </div>
 
-        <!-- Rebalancer Tab -->
+        <!-- Rebalancer Tab: risk-aware optimisation of the user's real holdings -->
         <div id="rebalancerTab" class="tab-view" style="display:none;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="card" style="margin-bottom:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+                    <div>
+                        <div class="card-title" style="margin-bottom:4px;"><i class="fas fa-sliders-h" style="color:var(--brand-primary); margin-right:8px;"></i> Risk-Aware Rebalancer</div>
+                        <div style="font-size:13px; color:var(--slate-500);">Mean-variance optimisation of <b>your holdings</b> on 2 years of real daily prices. Pick how much risk you want:</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-secondary" id="risk-con" onclick="setRiskProfile('Conservative')" title="Target 5% yearly volatility">Conservative</button>
+                        <button class="btn btn-secondary active" id="risk-mod" onclick="setRiskProfile('Moderate')" title="Target 10% yearly volatility">Moderate</button>
+                        <button class="btn btn-secondary" id="risk-agg" onclick="setRiskProfile('Aggressive')" title="Target 18% yearly volatility">Aggressive</button>
+                    </div>
+                </div>
+                <div id="rbVerdict" style="margin-top:20px; padding:14px 18px; border-radius:12px; background:var(--slate-50); border:1px solid var(--slate-200); font-weight:600; color:var(--slate-700); font-size:14px;">Add holdings on the Portfolio tab, then open this tab to analyse them.</div>
+                <div id="rbMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:16px;"></div>
+            </div>
+            <div style="display:grid; grid-template-columns: 3fr 2fr; gap:24px;">
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-sliders-h" style="color:var(--brand-primary); margin-right:8px;"></i> Risk Profile Optimization</div>
-                    <div style="display: flex; gap: 12px; margin-bottom: 32px;">
-                        <button class="btn btn-secondary flex-1" id="risk-con" onclick="setRiskProfile('Conservative')">Conservative</button>
-                        <button class="btn btn-secondary flex-1 active" id="risk-mod" onclick="setRiskProfile('Moderate')">Moderate</button>
-                        <button class="btn btn-secondary flex-1" id="risk-agg" onclick="setRiskProfile('Aggressive')">Aggressive</button>
+                    <div class="card-title"><i class="fas fa-right-left" style="color:var(--brand-primary); margin-right:8px;"></i> Current vs. recommended</div>
+                    <div style="overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                        <thead><tr style="text-align:left; color:var(--slate-400); font-size:11px; text-transform:uppercase;">
+                            <th style="padding:8px 6px;">Asset</th><th style="padding:8px 6px; text-align:right;">Now</th><th style="padding:8px 6px; text-align:right;">Target</th>
+                            <th style="padding:8px 6px; text-align:right;">Share of risk now</th><th style="padding:8px 6px; text-align:right;">Trade</th></tr></thead>
+                        <tbody id="rbTable"><tr><td colspan="5" style="padding:30px; text-align:center; color:var(--slate-400);">No analysis yet.</td></tr></tbody>
+                    </table>
                     </div>
-                    <div id="rebalanceReportList" class="list-container">
-                        <div style="padding:40px; text-align:center; color:var(--slate-400);">Calculating optimal weights...</div>
-                    </div>
-                    <button class="btn btn-primary" onclick="executeRebalance()" style="width:100%; margin-top:24px;">
-                        <i class="fas fa-check-circle" style="margin-right:6px;"></i> Execute Structural Optimization
+                    <button class="btn btn-primary" id="rbApply" onclick="applyRebalance()" style="width:100%; margin-top:20px;" disabled>
+                        <i class="fas fa-check-circle" style="margin-right:6px;"></i> Apply these trades to my tracked holdings
                     </button>
+                    <div style="font-size:11px; color:var(--slate-400); margin-top:8px; text-align:center;">RAPOS never places real orders. Applying updates the quantities RAPOS tracks for you.</div>
                 </div>
                 <div class="card">
-                    <div class="card-title"><i class="fas fa-chart-pie" style="color:var(--brand-secondary); margin-right:8px;"></i> Target Model Distribution</div>
-                    <div class="chart-container" style="height: 400px; position:relative;"><canvas id="targetChart"></canvas></div>
+                    <div class="card-title"><i class="fas fa-chart-pie" style="color:var(--brand-secondary); margin-right:8px;"></i> Recommended mix</div>
+                    <div class="chart-container" style="height: 300px; position:relative;"><canvas id="targetChart"></canvas></div>
+                    <div id="rbNote" style="font-size:11px; color:var(--slate-400); margin-top:12px; line-height:1.5;"></div>
                 </div>
             </div>
         </div>
@@ -358,24 +375,44 @@
     }
 
     window.showTradeModal = function() {
-        RAPOS_UI.showModal("Initialize New Asset", `
+        const L = t => `<div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;">${t}</div>`;
+        RAPOS_UI.showModal("Add a Holding", `
             <div style="display:flex;flex-direction:column;gap:16px;">
-                <div><div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;">Asset Name</div><input id="addAssetName" type="text" class="input-field" placeholder="e.g. Nvidia Corporation"></div>
-                <div><div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;">Ticker</div><input id="addTicker" type="text" class="input-field" placeholder="e.g. NVDA"></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                    <div><div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;">Class</div><select id="addAssetType" class="input-field"><option value="Stocks">Stocks</option><option value="Crypto">Crypto</option></select></div>
-                    <div><div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;">Quantity</div><input id="addQuantity" type="number" step="0.01" class="input-field" placeholder="Quantity"></div>
+                    <div>${L("Type")}<select id="addAssetType" class="input-field"><option value="Stocks">Stock</option><option value="ETF">ETF / Fund</option><option value="Crypto">Crypto</option><option value="Cash">Cash (USD)</option></select></div>
+                    <div>${L("Ticker")}<input id="addTicker" type="text" class="input-field" placeholder="e.g. NVDA, SPY, BTC" autocomplete="off"></div>
                 </div>
+                <div>${L("Quantity")}<input id="addQuantity" type="number" step="any" min="0" class="input-field" placeholder="Shares / coins (or dollars for cash)"></div>
+                <div id="addCheck" style="font-size:13px; color:var(--slate-500); min-height:18px;"></div>
             </div>
-        `, "Deploy Asset", async () => {
-            const asset = { user_id: RAPOS_UI.state.currentUser.id, asset_name: document.getElementById("addAssetName").value, ticker: document.getElementById("addTicker").value, quantity: parseFloat(document.getElementById("addQuantity").value), asset_type: document.getElementById("addAssetType").value };
-            if (!asset.asset_name || !asset.ticker || isNaN(asset.quantity)) return;
-            try { await RAPOS_API.saveAsset(asset); RAPOS_UI.closeModal(); RAPOS_UI.showToast("Asset secured."); syncTerminalData(); } catch(e) { RAPOS_UI.showToast("Failed.", "error"); }
+        `, "Add Holding", async () => {
+            const type = document.getElementById("addAssetType").value;
+            const ticker = type === "Cash" ? "CASH" : document.getElementById("addTicker").value.trim().toUpperCase();
+            const quantity = parseFloat(document.getElementById("addQuantity").value);
+            const check = document.getElementById("addCheck");
+            if (!ticker || !(quantity > 0)) { check.textContent = "Enter a ticker and a quantity above zero."; check.style.color = "var(--danger)"; return; }
+            let name = type === "Cash" ? "Cash" : ticker;
+            if (type !== "Cash") {
+                check.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Checking ' + ticker + "...";
+                check.style.color = "var(--slate-500)";
+                const q = await RAPOS_API.checkTicker(ticker).catch(() => null);
+                if (!q) { check.textContent = "Couldn't find a live price for " + ticker + ". Check the symbol (US tickers like AAPL, or BTC/ETH for crypto)."; check.style.color = "var(--danger)"; return; }
+                name = q.ticker;
+            }
+            const asset = { user_id: RAPOS_UI.state.currentUser.id, asset_name: name, ticker, quantity, asset_type: type };
+            try { await RAPOS_API.saveAsset(asset); RAPOS_UI.closeModal(); RAPOS_UI.showToast(ticker + " added."); syncTerminalData(); }
+            catch (e) { check.textContent = "Could not save: " + e.message; check.style.color = "var(--danger)"; }
         });
     };
 
+    // Keep prices live while the page is open (the backend caches quotes for 30 s)
+    setInterval(async () => {
+        if (document.hidden || !RAPOS_UI.state.currentUser) return;
+        RAPOS_UI.updatePortfolio(await RAPOS_API.fetchHoldings());
+    }, 30000);
+
     window.handleDeleteAsset = async function(id) {
-        if(confirm("Remove this asset?")) { try { await RAPOS_API.deleteAsset(id); RAPOS_UI.showToast("Asset removed."); syncTerminalData(); } catch(e) {} }
+        if(confirm("Remove this asset?")) { try { await RAPOS_API.deleteAsset(id); RAPOS_UI.showToast("Holding removed."); syncTerminalData(); } catch(e) { RAPOS_UI.showToast("Could not remove: " + e.message); } }
     };
 
     window.exportPortfolioPDF = async function() {
@@ -393,79 +430,121 @@
 
     window.setRiskProfile = function(p) {
         currentProfile = p;
-        document.querySelectorAll("#rebalancerTab .btn-secondary").forEach(b => b.classList.remove("active"));
-        if(p==="Conservative") document.getElementById("risk-con").classList.add("active");
-        if(p==="Moderate") document.getElementById("risk-mod").classList.add("active");
-        if(p==="Aggressive") document.getElementById("risk-agg").classList.add("active");
+        ["con","mod","agg"].forEach(k => document.getElementById("risk-" + k).classList.remove("active"));
+        document.getElementById({Conservative:"risk-con", Moderate:"risk-mod", Aggressive:"risk-agg"}[p]).classList.add("active");
         fetchRebalanceReport();
     };
 
+    let lastAnalysis = null;
+    const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+    const money = v => "$" + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
     window.fetchRebalanceReport = async function() {
-        const total = (RAPOS_UI.state.holdings || []).reduce((s,h) => s + (h.live_value || 0), 0);
-        const reportTotal = total > 0 ? total : 25000;
+        const holdings = (RAPOS_UI.state.holdings || []).filter(h => (h.quantity || 0) > 0);
+        const verdict = document.getElementById("rbVerdict");
+        const applyBtn = document.getElementById("rbApply");
+        applyBtn.disabled = true;
+        if (!holdings.filter(h => (h.ticker || "").toUpperCase() !== "CASH").length) {
+            verdict.textContent = "Add at least one stock, ETF or crypto holding on the Portfolio tab to get a recommendation.";
+            return;
+        }
+        verdict.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Analysing ' + holdings.length + ' holdings with real market data...';
+        verdict.style.background = "var(--slate-50)"; verdict.style.color = "var(--slate-700)";
         try {
-            const data = await RAPOS_API.fetchRebalanceReport(reportTotal, currentProfile);
-            if (data && data.optimization_report) renderRebalanceReport(data.optimization_report);
-        } catch(e) { console.error('fetchRebalanceReport error', e); }
+            const t0 = performance.now();
+            const d = await RAPOS_API.analyzePortfolio(holdings, currentProfile);
+            lastAnalysis = d;
+            renderRebalanceReport(d, Math.round(performance.now() - t0));
+            applyBtn.disabled = !d.trades.length;
+        } catch (e) {
+            verdict.textContent = (e.message === "Failed to fetch")
+                ? "Could not reach the RAPOS backend. If it was idle it can take up to a minute to wake; try again."
+                : e.message;
+            verdict.style.background = "var(--danger-bg)"; verdict.style.color = "var(--danger)";
+        }
     };
 
-    function renderRebalanceReport(report) {
-        const list = document.getElementById("rebalanceReportList");
-        if (!list) return;
-        const cur = {}; 
-        (RAPOS_UI.state.holdings || []).forEach(h => { cur[h.asset_type] = (cur[h.asset_type] || 0) + (h.live_value || 0); });
-        
-        list.innerHTML = report.map(r => { 
-            const currentVal = cur[r.asset_type] || 0;
-            const diff = r.target_value - currentVal; 
-            return `<div class="list-item" style="padding:14px 18px; margin-bottom:8px;">
-                <div>
-                    <div style="font-weight:700; font-size:15px; color:var(--slate-900);">${r.asset_type}</div>
-                    <div style="font-size:12px; color:var(--slate-500);">Target: <b>${r.target_weight}</b> ($${r.target_value.toLocaleString()})</div>
-                </div>
-                <div style="font-weight:800; font-size:15px; color:${diff > 0 ? 'var(--success)' : (diff < 0 ? 'var(--danger)' : 'var(--slate-400)')}">
-                    ${diff > 0 ? '+' : ''}$${Math.round(diff).toLocaleString()}
-                </div>
-            </div>`; 
+    function renderRebalanceReport(d, ms) {
+        const cur = d.current, rec = d.recommended;
+        const risky = cur.volatility > d.target_volatility + 0.02;
+        const v = document.getElementById("rbVerdict");
+        v.textContent = d.verdict + (d.trades.length ? "" : " No trades needed.");
+        v.style.background = risky ? "var(--danger-bg)" : "var(--success-bg)";
+        v.style.color = risky ? "var(--danger)" : "var(--success)";
+
+        const metric = (k, now, after, sub) => `<div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:12px; padding:12px 14px;">
+            <div style="font-size:11px; font-weight:700; color:var(--slate-400); text-transform:uppercase;">${k}</div>
+            <div style="font-size:18px; font-weight:800; color:var(--slate-900); margin-top:4px;">${now}${after ? ` <span style="font-size:13px; color:var(--brand-primary);">&rarr; ${after}</span>` : ""}</div>
+            <div style="font-size:11px; color:var(--slate-500);">${sub}</div></div>`;
+        document.getElementById("rbMetrics").innerHTML = [
+            metric("Volatility", pct(cur.volatility), pct(rec.volatility), `per year · target ${pct(d.target_volatility, 0)}`),
+            metric("Expected return", pct(cur.expected_return), pct(rec.expected_return), "per year (estimate)"),
+            metric("Sharpe ratio", cur.sharpe.toFixed(2), rec.sharpe.toFixed(2), "return per unit of risk"),
+            metric("1-day 95% VaR", money(cur.var_95_1d_value), "", `${pct(cur.var_95_1d_pct)} of ${money(d.total_value)}`),
+            metric("Max drawdown", pct(cur.max_drawdown), "", `worst fall, ${d.history.start.slice(0, 4)}&ndash;now`),
+        ].join("");
+
+        const trade = {}; d.trades.forEach(t => trade[t.asset] = t);
+        const names = [...new Set([...d.holdings.map(h => h.ticker), ...Object.keys(rec.weights)])]
+            .filter(n => (cur.weights[n] || 0) > 0.0005 || (rec.weights[n] || 0) > 0.0005);
+        document.getElementById("rbTable").innerHTML = names.sort((a, b) => (rec.weights[b] || 0) - (rec.weights[a] || 0)).map(n => {
+            const t = trade[n];
+            const tradeTxt = !t ? '<span style="color:var(--slate-400);">hold</span>'
+                : `<span style="color:${t.action === "BUY" ? "var(--success)" : "var(--danger)"}; font-weight:800;">${t.action} ${money(t.amount)}</span>` +
+                  (n !== "CASH" && t.shares ? `<div style="font-size:11px; color:var(--slate-400);">${t.shares.toLocaleString(undefined, {maximumFractionDigits: 4})} shares</div>` : "");
+            return `<tr style="border-top:1px solid var(--slate-100);">
+                <td style="padding:10px 6px; font-weight:700; color:var(--slate-900);">${n === "CASH" ? "Cash" : n}</td>
+                <td style="padding:10px 6px; text-align:right;">${pct(cur.weights[n] || 0)}</td>
+                <td style="padding:10px 6px; text-align:right; font-weight:700;">${pct(rec.weights[n] || 0)}</td>
+                <td style="padding:10px 6px; text-align:right;">${pct(Math.max(0, cur.risk_contribution[n] || 0), 0)}</td>
+                <td style="padding:10px 6px; text-align:right;">${tradeTxt}</td></tr>`;
         }).join("");
 
-        const labels = report.map(r => r.asset_type);
-        const data = report.map(r => r.target_value);
+        const shown = Object.keys(rec.weights).filter(n => rec.weights[n] > 0.005);
+        const data = { labels: shown.map(n => n === "CASH" ? "Cash" : n),
+                       datasets: [{ data: shown.map(n => +(rec.weights[n] * 100).toFixed(1)),
+                                    backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#6366f1", "#ec4899", "#0ea5e9", "#64748b"] }] };
         const canvas = document.getElementById("targetChart");
-        if (canvas) {
-            if (!RAPOS_UI.state.targetChart) { 
-                RAPOS_UI.state.targetChart = new Chart(canvas, {
-                    type: "doughnut",
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '70%',
-                        plugins: {
-                            legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true } }
-                        }
-                    }
-                }); 
-            } else { 
-                RAPOS_UI.state.targetChart.data.labels = labels; 
-                RAPOS_UI.state.targetChart.data.datasets[0].data = data; 
-                RAPOS_UI.state.targetChart.update(); 
-            }
-        }
+        if (RAPOS_UI.state.targetChart) RAPOS_UI.state.targetChart.destroy();
+        RAPOS_UI.state.targetChart = new Chart(canvas, { type: "doughnut", data,
+            options: { responsive: true, maintainAspectRatio: false, cutout: "70%",
+                       plugins: { legend: { position: "bottom", labels: { padding: 16, usePointStyle: true } },
+                                  tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw}%` } } } } });
+        const miss = Object.keys(d.missing || {});
+        document.getElementById("rbNote").innerHTML =
+            `${d.history.days} trading days of prices (${d.history.start} to ${d.history.end}). ` +
+            `Cash earns the ${pct(d.risk_free, 0)} risk-free rate. Max ${pct(d.max_weight, 0)} in any one asset. Computed in ${(ms / 1000).toFixed(1)} s.` +
+            (miss.length ? `<br><b style="color:var(--danger);">Left out (no price history): ${miss.join(", ")}</b>` : "");
     }
 
-    window.executeRebalance = function() {
-        RAPOS_UI.showToast("Executing optimization protocol...");
-        setTimeout(() => { 
-            RAPOS_UI.showToast("Complete. Portfolio allocation signals dispatched."); 
-            syncTerminalData(); 
-        }, 1500);
+    window.applyRebalance = async function() {
+        const d = lastAnalysis;
+        if (!d || !d.trades.length) return;
+        const lines = d.trades.map(t => `${t.action} ${t.asset === "CASH" ? "cash" : t.asset} ${money(t.amount)}`).join("<br>");
+        RAPOS_UI.showModal("Apply rebalance?", `<p style="font-size:14px; color:var(--slate-600); line-height:1.6;">This updates the quantities RAPOS tracks to the ${d.profile} target. No real orders are placed.</p>
+            <div style="margin-top:12px; font-size:13px; font-weight:600;">${lines}</div>`, "Apply", async () => {
+            RAPOS_UI.closeModal();
+            try {
+                const rows = RAPOS_UI.state.holdings;
+                const price = {}; d.holdings.forEach(h => price[h.ticker] = h.price);
+                for (const [asset, w] of Object.entries(d.recommended.weights)) {
+                    const target = w * d.total_value;
+                    const mine = rows.filter(r => (r.ticker || "").toUpperCase() === asset);
+                    const qty = asset === "CASH" ? +target.toFixed(2) : +(target / price[asset]).toFixed(6);
+                    if (mine.length) {
+                        // keep one row per asset with the new quantity
+                        if (qty > 0) await RAPOS_API.updateQuantity(mine[0].id, qty); else await RAPOS_API.deleteAsset(mine[0].id);
+                        for (const extra of mine.slice(1)) await RAPOS_API.deleteAsset(extra.id);
+                    } else if (qty > 0) {
+                        await RAPOS_API.saveAsset({ user_id: RAPOS_UI.state.currentUser.id, ticker: asset,
+                            asset_name: asset === "CASH" ? "Cash" : asset, asset_type: asset === "CASH" ? "Cash" : "Stocks", quantity: qty });
+                    }
+                }
+                RAPOS_UI.showToast("Holdings updated to the " + d.profile + " target.");
+                await syncTerminalData();
+                fetchRebalanceReport();
+            } catch (e) { RAPOS_UI.showToast("Could not update holdings: " + e.message, "error"); }
+        });
     };
 </script>
 </body>

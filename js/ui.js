@@ -130,12 +130,12 @@ const RAPOS_UI = {
                     <div style="width:48px; height:48px; background:var(--slate-100); border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; color:var(--brand-primary); font-size:12px;">${(h.ticker || 'AST').substring(0,4)}</div>
                     <div>
                         <div style="font-weight:700; color:var(--slate-900);">${h.asset_name || h.ticker}</div>
-                        <div style="font-size:12px; color:var(--slate-500);">${h.quantity || 1} units @ $${(h.current_price || 0).toLocaleString()}</div>
+                        <div style="font-size:12px; color:var(--slate-500);">${h.ticker === 'CASH' ? 'Cash balance' : `${h.quantity || 0} units @ ${h.current_price == null ? '<span style="color:var(--danger)">price unavailable</span>' : '$' + h.current_price.toLocaleString(undefined, {maximumFractionDigits: 2})}${h.stale ? ' (delayed)' : ''}`}</div>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:24px;">
                     <div style="text-align:right;">
-                        <div style="font-weight:800; font-size:16px; color:var(--slate-900);">$${(h.live_value || 0).toLocaleString()}</div>
+                        <div style="font-weight:800; font-size:16px; color:var(--slate-900);">${h.price_error ? '&mdash;' : '$' + (h.live_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                         <div class="stat-trend ${(h.performance_pct || 0) >= 0 ? 'trend-up' : 'trend-down'}">
                             ${(h.performance_pct || 0) >= 0 ? '+' : ''}${h.performance_pct || 0}%
                         </div>
@@ -153,8 +153,7 @@ const RAPOS_UI = {
         this.state.holdings.forEach(h => {
             const val = h.live_value || 0;
             totalVal += val;
-            const prevPrice = (h.current_price || 0) / (1 + (h.performance_pct || 0) / 100);
-            totalPrevVal += (h.quantity || 1) * prevPrice;
+            totalPrevVal += val / (1 + (h.performance_pct || 0) / 100);   // value at yesterday's close
         });
 
         const totalGain = totalVal - totalPrevVal;
@@ -230,11 +229,12 @@ const RAPOS_UI = {
     renderDiscovery(items) {
         const div = document.getElementById('discoveryList');
         if (!div || !items) return;
+        if (!items.length) { div.innerHTML = '<div style="padding:20px; color:var(--slate-400); font-size:13px;">Live market movers are unavailable right now.</div>'; return; }
         div.innerHTML = items.map(item => `
-            <div class="list-item" style="padding:12px 16px; cursor:pointer;" onclick="document.getElementById('tickerSelector').value='${item.ticker}'; fetchAIPredictions('${item.ticker}');">
+            <div class="list-item" style="padding:12px 16px; cursor:pointer;" onclick="window.open('https://finance.yahoo.com/quote/${item.ticker}', '_blank')">
                 <div>
                     <div style="font-weight:800; font-size:15px; color:var(--slate-900);">${item.ticker}</div>
-                    <div style="font-size:12px; color:var(--slate-500);">${item.name || ''}</div>
+                    <div style="font-size:12px; color:var(--slate-500);">$${(item.price || 0).toLocaleString()}</div>
                 </div>
                 <div class="stat-trend ${item.change >= 0 ? 'trend-up' : 'trend-down'}" style="font-weight:800; font-size:14px;">
                     ${item.change >= 0 ? '+' : ''}${item.change}%
@@ -246,6 +246,7 @@ const RAPOS_UI = {
     renderNews(news) {
         const div = document.getElementById('newsFeed');
         if (!div || !news) return;
+        if (!news.length) { div.innerHTML = '<div style="padding:20px 24px; color:var(--slate-400); font-size:13px;">Live news is unavailable right now.</div>'; return; }
         div.innerHTML = news.map(item => `
             <div style="padding:20px 24px; border-bottom:1px solid var(--slate-100); cursor:pointer; transition:background 0.2s;" onclick="window.open('${item.url}', '_blank')">
                 <div style="font-size:14px; font-weight:700; color:var(--slate-800); margin-bottom:6px; line-height:1.4;">${item.headline}</div>

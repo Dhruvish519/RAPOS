@@ -27,42 +27,71 @@ const RAPOS_API = {
                 .from('portfolios')
                 .select('*')
                 .order('created_at', { ascending: false });
-            
             if (error) throw error;
             const base = data || [];
-
-            // Enrich with live price with fallback
-            const enriched = await Promise.all(base.map(async (asset) => {
-                try {
-                    const priceRes = await fetch(`${API_BASE_URL}/api/live-price?ticker=${asset.ticker}`);
-                    if (priceRes.ok) {
-                        const priceData = await priceRes.json();
-                        return {
-                            ...asset,
-                            current_price: priceData.current_price,
-                            live_value: (asset.quantity || 1) * priceData.current_price,
-                            performance_pct: priceData.percent_change || 0,
-                            is_live: true
-                        };
-                    }
-                } catch (e) {
-                    // Fallback simulated price if backend sleeping
+            const quotes = await this.fetchQuotes(base.map(a => a.ticker));
+            // Live prices from the backend (one batched call). No made-up
+            // fallback: if a price can't be fetched the holding says so.
+            return base.map(asset => {
+                const t = (asset.ticker || '').toUpperCase();
+                if (t === 'CASH') {
+                    return { ...asset, current_price: 1, live_value: asset.quantity || 0,
+                             performance_pct: 0, is_live: true };
                 }
-                const fallbackPrice = asset.asset_type === 'Crypto' ? 64320 : 185;
-                return {
-                    ...asset,
-                    current_price: asset.current_price || fallbackPrice,
-                    live_value: (asset.quantity || 1) * (asset.current_price || fallbackPrice),
-                    performance_pct: asset.performance_pct || 1.25,
-                    is_live: false
-                };
-            }));
-
-            return enriched;
+                const q = quotes[t];
+                if (q && !q.error) {
+                    return { ...asset, current_price: q.price, live_value: (asset.quantity || 0) * q.price,
+                             performance_pct: +(q.percent_change || 0).toFixed(2), is_live: true,
+                             price_source: q.source, stale: !!q.stale };
+                }
+                return { ...asset, current_price: null, live_value: 0, performance_pct: 0,
+                         is_live: false, price_error: true };
+            });
         } catch (e) {
             console.error('fetchHoldings error:', e);
             return [];
         }
+    },
+
+    /** Batched live prices: {AAPL: {price, percent_change, source}, ...} */
+    async fetchQuotes(tickers) {
+        const list = [...new Set((tickers || []).map(t => (t || '').toUpperCase()).filter(t => t && t !== 'CASH'))];
+        if (!list.length) return {};
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/quotes?tickers=${encodeURIComponent(list.join(','))}`);
+            if (res.ok) return (await res.json()).quotes || {};
+        } catch (e) { console.warn('Quote service unreachable', e); }
+        return {};
+    },
+
+    /** Check a ticker exists and get its price before saving it. */
+    async checkTicker(ticker) {
+        const res = await fetch(`${API_BASE_URL}/api/live-price?ticker=${encodeURIComponent(ticker)}`);
+        if (!res.ok) return null;
+        return await res.json();
+    },
+
+    /** Real-portfolio risk analysis + optimisation (backend /api/portfolio/analyze). */
+    async analyzePortfolio(holdings, profile) {
+        const res = await fetch(`${API_BASE_URL}/api/portfolio/analyze`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                profile,
+                holdings: holdings.filter(h => (h.quantity || 0) > 0)
+                                  .map(h => ({ ticker: h.ticker, quantity: h.quantity }))
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            const d = data.detail;
+            throw new Error(typeof d === 'string' ? d : (d && d.message) || 'Analysis failed');
+        }
+        return data;
+    },
+
+    async updateQuantity(id, quantity) {
+        const { error } = await supabase.from('portfolios').update({ quantity }).eq('id', id);
+        if (error) throw error;
     },
 
     async saveAsset(asset) {
@@ -87,120 +116,25 @@ const RAPOS_API = {
     async fetchAIPredictions(ticker) {
         try {
             const res = await fetch(`${API_BASE_URL}/api/predict-risk?ticker=${ticker}`);
-            if (res.ok) {
-                return await res.json();
-            }
-        } catch (e) {
-            console.warn('AI Predictor offline, using quantitative LSTM fallback');
-        }
-
-        // Quantitative LSTM baseline fallbacks
-        const baselines = {
-            'AAPL': { next: 194.20, ret: 1.45, risk: '4.2/10' },
-            'TSLA': { next: 182.50, ret: -0.85, risk: '7.8/10' },
-            'BTC':  { next: 66450.00, ret: 3.12, risk: '8.5/10' }
-        };
-        const base = baselines[ticker] || { next: 150.00, ret: 0.50, risk: '5.0/10' };
-        return {
-            predicted_next_close: base.next.toLocaleString(),
-            predicted_daily_return_pct: base.ret,
-            ai_risk_score: base.risk,
-            model_confidence: 92.4
-        };
+            if (res.ok) return await res.json();
+        } catch (e) { console.warn('Forecast service unreachable', e); }
+        return { error: 'Forecast service unreachable' };
     },
 
     async fetchMarketDiscover() {
         try {
             const res = await fetch(`${API_BASE_URL}/api/market-discover`);
-            if (res.ok) {
-                return await res.json();
-            }
-        } catch (e) {
-            console.warn('Discovery Engine offline, using market movers baseline');
-        }
-
-        return {
-            discovery: [
-                { ticker: 'NVDA', name: 'Nvidia Corp', change: 3.8 },
-                { ticker: 'MSFT', name: 'Microsoft', change: 1.2 },
-                { ticker: 'SOL',  name: 'Solana', change: 5.4 },
-                { ticker: 'AMZN', name: 'Amazon.com', change: -0.6 }
-            ]
-        };
+            if (res.ok) return await res.json();
+        } catch (e) { console.warn('Market movers unavailable', e); }
+        return { discovery: [] };
     },
 
-    async fetchRebalanceReport(totalValue, profile) {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/rebalance?total_value=${totalValue}&profile=${profile}`);
-            if (res.ok) {
-                return await res.json();
-            }
-        } catch (e) {
-            console.warn('Rebalance Engine offline, using Markowitz Efficient Frontier fallback');
-        }
-
-        const val = totalValue > 0 ? totalValue : 25000;
-        const models = {
-            'Conservative': [
-                { asset_type: 'Bonds', target_weight: '50%', target_value: Math.round(val * 0.50) },
-                { asset_type: 'Stocks', target_weight: '30%', target_value: Math.round(val * 0.30) },
-                { asset_type: 'Commodities', target_weight: '15%', target_value: Math.round(val * 0.15) },
-                { asset_type: 'Crypto', target_weight: '5%', target_value: Math.round(val * 0.05) }
-            ],
-            'Moderate': [
-                { asset_type: 'Stocks', target_weight: '50%', target_value: Math.round(val * 0.50) },
-                { asset_type: 'Bonds', target_weight: '25%', target_value: Math.round(val * 0.25) },
-                { asset_type: 'Crypto', target_weight: '15%', target_value: Math.round(val * 0.15) },
-                { asset_type: 'Commodities', target_weight: '10%', target_value: Math.round(val * 0.10) }
-            ],
-            'Aggressive': [
-                { asset_type: 'Stocks', target_weight: '60%', target_value: Math.round(val * 0.60) },
-                { asset_type: 'Crypto', target_weight: '25%', target_value: Math.round(val * 0.25) },
-                { asset_type: 'Commodities', target_weight: '10%', target_value: Math.round(val * 0.10) },
-                { asset_type: 'Bonds', target_weight: '5%', target_value: Math.round(val * 0.05) }
-            ]
-        };
-
-        return {
-            optimization_report: models[profile] || models['Moderate']
-        };
-    },
-
-    /**
-     * Intelligence & News
-     */
     async fetchNews() {
         try {
             const res = await fetch(`${API_BASE_URL}/api/market-news`);
-            if (res.ok) {
-                return await res.json();
-            }
-        } catch (e) {
-            // High-fidelity fallback news
-        }
-
-        return {
-            news: [
-                { 
-                    headline: "Neural Network Confidence Index reaches multi-year highs as volatility subsides.", 
-                    source: "RAPOS Intel", 
-                    datetime: Math.floor(Date.now() / 1000) - 1800, 
-                    url: "https://finance.yahoo.com" 
-                },
-                { 
-                    headline: "Federal Reserve hints at quantitative stability: Tech & Crypto sectors respond with bullish momentum.", 
-                    source: "Global Macro", 
-                    datetime: Math.floor(Date.now() / 1000) - 5400, 
-                    url: "https://bloomberg.com" 
-                },
-                { 
-                    headline: "Institutional Rebalancing signals higher allocation to high-yield sovereign debt and tech equities.", 
-                    source: "Markowitz Lab", 
-                    datetime: Math.floor(Date.now() / 1000) - 10800, 
-                    url: "https://reuters.com" 
-                }
-            ]
-        };
+            if (res.ok) return await res.json();
+        } catch (e) { console.warn('News unavailable', e); }
+        return { news: [] };
     },
 
     /**

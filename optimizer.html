@@ -25,7 +25,7 @@
         <header class="tool-header">
             <div>
                 <h1>Portfolio <span class="accent">Optimiser</span></h1>
-                <p>Mean-variance (Markowitz) optimisation: the highest expected return for the risk your profile allows, with the efficient frontier for context.</p>
+                <p>Mean-variance (Markowitz) optimisation on real market data: the highest expected return for the risk your profile allows, with the efficient frontier for context.</p>
             </div>
             <div class="segmented" id="profiles" role="tablist">
                 <button data-p="Conservative">Conservative</button>
@@ -36,6 +36,22 @@
 
         <div class="tool-grid">
             <section class="card span-12" style="padding:24px 32px">
+                <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap; margin-bottom:18px;">
+                    <div style="min-width:200px">
+                        <label class="field-label" for="mode" style="margin-top:0">Assets</label>
+                        <select id="mode" class="input-field compact">
+                            <option value="real" selected>Real tickers (live market data)</option>
+                            <option value="demo">Built-in demo universe (simulated)</option>
+                        </select>
+                    </div>
+                    <div id="tickerBox" style="flex:1; min-width:260px">
+                        <label class="field-label" for="tickers" style="margin-top:0">Tickers, comma-separated (stocks, ETFs, BTC/ETH)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input id="tickers" class="input-field compact" style="flex:1" value="AAPL, MSFT, JPM, TLT, GLD, BTC">
+                            <button id="runBtn" class="btn btn-primary" style="white-space:nowrap">Optimise</button>
+                        </div>
+                    </div>
+                </div>
                 <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap;">
                     <div style="min-width:160px">
                         <label class="field-label" for="rf" style="margin-top:0">Risk-free rate</label>
@@ -118,6 +134,10 @@
         load();
     }));
     $('rf').onchange = load; $('cap').onchange = load;
+    $('mode').onchange = () => { $('tickerBox').classList.toggle('hidden', $('mode').value !== 'real'); load(); };
+    $('runBtn').onclick = load;
+    $('tickers').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
+    const real = () => $('mode').value === 'real' && !custom;
 
     async function load() {
         $('err').innerHTML = '';
@@ -125,14 +145,20 @@
         const rf = +$('rf').value, cap = +$('cap').value;
         try {
             let res;
-            if (custom) {
+            if (real()) {
+                const list = [...new Set($('tickers').value.split(/[\s,;]+/).map(t => t.trim().toUpperCase()).filter(Boolean))].slice(0, 15);
+                if (list.length < 2) throw new Error('Enter at least two tickers.');
+                // start from an equal-dollar portfolio; the optimiser finds the best mix
+                res = await fetch(`${API}/api/portfolio/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile, risk_free: rf, max_weight: cap, holdings: list.map(t => ({ ticker: t, value: 1000 })) }) });
+            } else if (custom) {
                 res = await fetch(`${API}/api/optimize`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ profile, risk_free: rf, max_weight: cap, custom_assets: [{ name: custom.name, closes: custom.closes }] }) });
             } else {
                 res = await fetch(`${API}/api/optimize?profile=${profile}&risk_free=${rf}&max_weight=${cap}`);
             }
             const d = await res.json();
-            if (!res.ok) throw new Error(d.detail || 'Optimisation failed');
+            if (!res.ok) throw new Error(typeof d.detail === 'string' ? d.detail : (d.detail && d.detail.message) || 'Optimisation failed');
             render(d);
         } catch (e) {
             $('err').innerHTML = `<div class="notice err">${e.message === 'Failed to fetch' ? 'Could not reach the AI service. If it was idle it can take ~30 s to wake; try again.' : e.message}</div>`;
@@ -141,7 +167,10 @@
 
     function render(d) {
         const r = d.recommended;
-        $('dataNote').textContent = `${d.observations} daily observations · return shrinkage ${(d.return_shrinkage * 100).toFixed(0)}% (short histories are trusted less) · built-in universe is simulated data calibrated to typical asset-class behaviour.`;
+        const miss = Object.keys(d.missing || {});
+        $('dataNote').textContent = d.history
+            ? `Real daily prices, ${d.history.start} to ${d.history.end} (${d.observations} trading days) · return shrinkage ${(d.return_shrinkage * 100).toFixed(0)}%.` + (miss.length ? ` No data for: ${miss.join(', ')}.` : '')
+            : `${d.observations} daily observations · return shrinkage ${(d.return_shrinkage * 100).toFixed(0)}% (short histories are trusted less) · built-in universe is simulated data calibrated to typical asset-class behaviour.`;
         $('headline').innerHTML = [
             ['Expected return', pct(r.expected_return), 'per year'],
             ['Volatility', pct(r.volatility), `target ${pct(d.target_volatility, 0)}`],
@@ -172,12 +201,14 @@
             { label: 'Min variance', data: [pt(d.min_variance)], backgroundColor: '#64748b', pointStyle: 'rectRot', pointRadius: 9 },
             { label: 'Max Sharpe', data: [pt(d.max_sharpe)], backgroundColor: '#f59e0b', pointStyle: 'rectRot', pointRadius: 9 },
             { label: `${d.profile} (yours)`, data: [pt(r)], backgroundColor: '#6366f1', borderColor: '#0f172a', borderWidth: 2, pointStyle: 'rectRot', pointRadius: 12 },
+            ...(d.current ? [{ label: 'Equal weight', data: [pt(d.current)], backgroundColor: '#ef4444', pointStyle: 'triangle', pointRadius: 9 }] : []),
         ] }, options: { maintainAspectRatio: false,
             scales: { x: { title: { display: true, text: 'Volatility (% per year)' }, min: 0 }, y: { title: { display: true, text: 'Expected return (% per year)' } } },
             plugins: { legend: { labels: { usePointStyle: true, boxWidth: 8 } },
                 tooltip: { callbacks: { label: c => `${c.raw.n || c.dataset.label}: return ${c.raw.y.toFixed(1)}%, risk ${c.raw.x.toFixed(1)}%` } } } } });
 
-        $('cmpBody').innerHTML = [r, d.max_sharpe, d.min_variance].map(p => `<tr><td>${p.label}</td>
+        const eq = d.current ? [{ ...d.current, label: 'Equal weight (no optimisation)' }] : [];
+        $('cmpBody').innerHTML = [r, d.max_sharpe, d.min_variance, ...eq].map(p => `<tr><td>${p.label}</td>
             <td class="num">${pct(p.expected_return)}</td><td class="num">${pct(p.volatility)}</td><td class="num">${p.sharpe.toFixed(2)}</td></tr>`).join('');
 
         // CASH has no variance, so its correlations are all zero: leave it out
