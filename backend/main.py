@@ -166,6 +166,8 @@ def get_live_price(ticker: str):
         "low": round(q["low"], 2),
         "previous_close": round(q["previous_close"], 2),
         "source": q["source"],
+        "currency": q.get("currency", "USD"),          # listing currency
+        "native_price": round(q.get("native_price", q["price"]), 2),
     }
 
 

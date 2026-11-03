@@ -291,3 +291,12 @@ def test_history_endpoint(client, monkeypatch):
     j = client.get("/api/history", params={"ticker": "TCS.NS", "days": 90}).json()
     assert j["currency"] == "INR" and len(j["dates"]) == len(j["closes"]) < 80
     assert j["stats"]["return_pct"] > 0 and j["stats"]["max_drawdown_pct"] == 0
+
+
+def test_live_price_reports_native_currency(client, monkeypatch):
+    import market_data as md
+    monkeypatch.setattr(md, "quote", lambda s: {"ticker": "INFY.NS", "price": 12.0, "change": 0.2, "percent_change": 1.8,
+                                                "high": 12.1, "low": 11.9, "previous_close": 11.8, "source": "yahoo",
+                                                "currency": "INR", "native_price": 1144.6})
+    j = client.get("/api/live-price", params={"ticker": "INFY.NS"}).json()
+    assert j["currency"] == "INR" and j["native_price"] == 1144.6 and j["current_price"] == 12.0
