@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAPOS | Terminal Dashboard</title>
+    <title>Dashboard | RAPOS</title>
     <link rel="stylesheet" href="s1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -102,7 +102,7 @@
             </div>
             <div class="sidebar-item" data-tab="rebalancerTab" onclick="switchTab('rebalancerTab', this)">
                 <i class="fas fa-microchip"></i>
-                <span>AI Rebalancer</span>
+                <span>Rebalancer</span>
             </div>
             <div class="sidebar-item" onclick="window.location.href='chart-vision.html'">
                 <i class="fas fa-eye"></i>
@@ -121,12 +121,13 @@
         <div style="padding: 24px;">
             <div style="background: var(--slate-50); border-radius: 16px; padding: 20px; border: 1px solid var(--slate-200);">
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-                    <div style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 10px var(--success);"></div>
-                    <span style="font-size:11px; font-weight:800; color:var(--slate-700); text-transform:uppercase;">Neural Core Active</span>
+                    <div id="backendDot" style="width:8px; height:8px; background:var(--slate-400); border-radius:50%;"></div>
+                    <span id="backendStatus" style="font-size:11px; font-weight:800; color:var(--slate-700); text-transform:uppercase;">Waking backend (up to 1 min)...</span>
                 </div>
                 <div style="font-size:11px; color:var(--slate-500); line-height:1.8;">
-                    <div style="display:flex; justify-content:space-between;"><span>Uptime</span><span style="color:var(--slate-900); font-weight:600;">99.9%</span></div>
-                    <div style="display:flex; justify-content:space-between;"><span>Sync</span><span style="color:var(--slate-900); font-weight:600;">Realtime</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>Chart OCR</span><span id="hcOcr" style="color:var(--slate-900); font-weight:600;">--</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>LSTM model</span><span id="hcLstm" style="color:var(--slate-900); font-weight:600;">--</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>Market data</span><span id="hcMkt" style="color:var(--slate-900); font-weight:600;">--</span></div>
                 </div>
             </div>
         </div>
@@ -162,7 +163,7 @@
             <header style="margin-bottom: 40px; display:flex; justify-content:space-between; align-items:flex-end;">
                 <div>
                     <h2 class="font-heading" style="font-size: 32px; margin-bottom: 8px;">Hi, <span id="userName">Investor</span></h2>
-                    <p style="color: var(--slate-500);">AI Node is currently processing <span id="assetCount">0</span> holdings.</p>
+                    <p style="color: var(--slate-500);">Tracking <span id="assetCount">0</span> holdings.</p>
                 </div>
                 <button class="btn btn-primary" onclick="showTradeModal()">
                     <i class="fas fa-plus"></i> New Investment
@@ -185,7 +186,7 @@
                         <div class="stat-card">
                             <div class="stat-label">Live Risk Score</div>
                             <div id="aiRiskScoreValue" class="stat-value">---</div>
-                            <div class="stat-trend" style="color:var(--slate-400);">Neural Assessment</div>
+                            <div id="riskScoreNote" class="stat-trend" style="color:var(--slate-400);">Volatility-based, 1&ndash;10</div>
                         </div>
                     </div>
                 </div>
@@ -194,17 +195,17 @@
                 <div class="card" style="grid-column: span 4;">
                     <div class="card-title">
                         <i class="fas fa-brain" style="color:var(--brand-secondary);"></i>
-                        Next-Close Fcst
+                        LSTM Next-Close Forecast
                     </div>
                     <select id="tickerSelector" onchange="fetchAIPredictions(this.value)" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--slate-200); background:var(--slate-50); font-weight:600; margin-bottom:16px;">
-                        <option value="AAPL">Select: Apple (AAPL)</option>
-                        <option value="TSLA">Select: Tesla (TSLA)</option>
-                        <option value="BTC">Bitcoin (BTC)</option>
+                        <option value="SPXX">SPXX: index tracker (simulated)</option>
+                        <option value="TECH">TECH: tech stock (simulated)</option>
+                        <option value="BNDX">BNDX: bond fund (simulated)</option>
                     </select>
                     <div style="padding: 16px; background: var(--slate-50); border-radius: 16px; border: 1px solid var(--slate-200);">
                         <div id="predictedCloseValue" style="font-size: 24px; font-weight: 800; color: var(--brand-primary); margin-bottom: 4px;">$---</div>
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:12px; color:var(--slate-500); font-weight:600;">Confidence: <span id="modelConfidence">--%</span></span>
+                            <span style="font-size:12px; color:var(--slate-500); font-weight:600;">Last close: <span id="modelConfidence">--</span></span>
                             <div id="predictedSentiment" class="stat-trend" style="padding:2px 8px; border-radius:6px; font-size:11px; text-transform:uppercase;">---</div>
                         </div>
                     </div>
@@ -214,7 +215,7 @@
                 <div class="card" style="grid-column: span 12;">
                     <div class="card-title">Active Portfolio Weights</div>
                     <div id="holdingsList" class="list-container">
-                        <div style="text-align: center; padding: 60px; color: var(--slate-400);">Initializing secure node...</div>
+                        <div style="text-align: center; padding: 60px; color: var(--slate-400);">Loading your holdings...</div>
                     </div>
                 </div>
 
@@ -295,7 +296,20 @@
 <script src="js/rapos-config.js"></script>
 <script>
     // Start waking the sleep-when-idle backend right away; nothing waits on it.
-    fetch(window.RAPOS_API_BASE + '/api/health', { keepalive: true }).catch(function () {});
+    fetch(window.RAPOS_API_BASE + '/api/health', { keepalive: true })
+        .then(function (r) { return r.json(); })
+        .then(function (h) {
+            var yes = function (v) { return v ? 'Ready' : 'Off'; };
+            document.getElementById('backendStatus').textContent = 'Backend online';
+            document.getElementById('backendDot').style.background = 'var(--success)';
+            document.getElementById('hcOcr').textContent = yes(h.ocr);
+            document.getElementById('hcLstm').textContent = yes(h.lstm);
+            document.getElementById('hcMkt').textContent = yes(h.market_data);
+        })
+        .catch(function () {
+            document.getElementById('backendStatus').textContent = 'Backend unreachable';
+            document.getElementById('backendDot').style.background = 'var(--danger)';
+        });
 </script>
 <script src="supabase-client.js"></script>
 <script src="js/api.js"></script>
@@ -376,7 +390,7 @@
         RAPOS_UI.showToast("Generating PDF...");
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        doc.setFont("Helvetica","bold"); doc.setFontSize(22); doc.setTextColor(59,130,246); doc.text("RAPOS: TERMINAL REPORT", 20, 20);
+        doc.setFont("Helvetica","bold"); doc.setFontSize(22); doc.setTextColor(59,130,246); doc.text("RAPOS: PORTFOLIO REPORT", 20, 20);
         doc.setFont("Helvetica","normal"); doc.setFontSize(10); doc.setTextColor(100,116,139); doc.text("Target: " + RAPOS_UI.state.currentUser.email, 20, 30);
         doc.text("Timestamp: " + new Date().toLocaleString(), 20, 36);
         let y = 50; doc.setFontSize(12); doc.setTextColor(15,23,42);

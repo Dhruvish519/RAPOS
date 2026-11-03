@@ -85,43 +85,41 @@ async def root():
 
 @app.get("/api/predict-risk")
 def predict_risk(ticker: str = 'SPXX'):
+    """
+    LSTM next-close forecast + volatility-based risk score (1-10) for one of
+    the simulated assets the model was trained on (see generate_stock_data.py).
+    Unknown tickers get an explanatory error instead of made-up numbers.
+    """
     global loaded_model, scaler_scale, scaler_min
-    
-    if loaded_model is None:
-        # Fallback for demo stability if model hasn't been trained yet
-        return {
-            "ticker": ticker,
-            "ai_risk_score": 5.0,
-            "last_close_price": 150.0,
-            "predicted_next_close": 152.5,
-            "predicted_daily_return_pct": 1.6,
-            "historical_volatility_pct": 12.5,
-            "is_simulated": True,
-            "message": "Demo Mode: Using average risk baseline."
-        }
-        
+    ticker = ticker.upper()
     try:
         df = pd.read_csv(DATA_PATH)
-        df_ticker = df[df['Ticker'] == ticker].copy()
-        if len(df_ticker) < SEQUENCE_LENGTH:
-             # Simulation fallback if ticker is missing from local CSV (like new crypto)
-             return {
-                "ticker": ticker,
-                "ai_risk_score": round(np.random.uniform(4.0, 8.0), 1),
-                "is_simulated": True
-            }
-            
+    except Exception as e:
+        return {"ticker": ticker, "error": f"Price history unavailable: {e}", "ai_risk_score": None}
+    available = sorted(df['Ticker'].unique().tolist())
+
+    if loaded_model is None:
+        return {"ticker": ticker, "error": "LSTM model is not loaded on the server.",
+                "ai_risk_score": None, "available_tickers": available}
+
+    df_ticker = df[df['Ticker'] == ticker]
+    if len(df_ticker) < SEQUENCE_LENGTH:
+        return {"ticker": ticker, "ai_risk_score": None, "available_tickers": available,
+                "error": f"No price history for {ticker}. The LSTM covers the simulated assets "
+                         f"{', '.join(available)}."}
+
+    try:
         recent_data = df_ticker['Close'].values[-SEQUENCE_LENGTH:]
         scaled_inputs = recent_data * scaler_scale + scaler_min
         scaled_prediction = float(loaded_model.predict(scaled_inputs.reshape(1, SEQUENCE_LENGTH, 1))[0, 0])
-            
+
         predicted_price = (scaled_prediction - scaler_min) / scaler_scale
         recent_returns = pd.Series(recent_data).pct_change().dropna()
         annual_volatility = recent_returns.std() * np.sqrt(252) * 100
         last_close = recent_data[-1]
         predicted_return = ((predicted_price - last_close) / last_close) * 100
         risk_score = min(max((annual_volatility / 3.0), 1.0), 10.0)
-        
+
         return {
             "ticker": ticker,
             "last_close_price": round(float(last_close), 2),
@@ -129,21 +127,13 @@ def predict_risk(ticker: str = 'SPXX'):
             "predicted_daily_return_pct": round(float(predicted_return), 2),
             "historical_volatility_pct": round(float(annual_volatility), 2),
             "ai_risk_score": round(float(risk_score), 1),
+            "risk_score_method": "annualised volatility / 3, clipped to 1-10",
             "model_type": "LSTM Neural Network",
-            "is_simulated": False
+            "is_simulated": False,      # a real model output (on simulated price data)
+            "data_source": "simulated",
         }
     except Exception as e:
-        # Extreme fallback
-        return {
-            "ticker": ticker, 
-            "ai_risk_score": 6.5,
-            "last_close_price": 0.0,
-            "predicted_next_close": 0.0,
-            "predicted_daily_return_pct": 0.0,
-            "historical_volatility_pct": 0.0,
-            "is_simulated": True, 
-            "error": str(e)
-        }
+        return {"ticker": ticker, "error": f"Prediction failed: {e}", "ai_risk_score": None}
 
 # --- REAL-TIME MARKET DATA ---
 

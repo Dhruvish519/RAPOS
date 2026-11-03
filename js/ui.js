@@ -206,9 +206,17 @@ const RAPOS_UI = {
         const pConf  = document.getElementById('modelConfidence');
         const pSent  = document.getElementById('predictedSentiment');
 
+        if (data.error || data.predicted_next_close == null) {
+            // No model output for this asset: say so rather than show a number
+            if (pClose) pClose.textContent = 'n/a';
+            if (pScore) pScore.textContent = '---';
+            if (pConf)  pConf.textContent  = '--';
+            if (pSent)  { pSent.textContent = 'No data'; pSent.className = 'stat-trend'; }
+            return;
+        }
         if (pClose) pClose.textContent = '$' + data.predicted_next_close;
         if (pScore) pScore.textContent = data.ai_risk_score;
-        if (pConf)  pConf.textContent  = (data.model_confidence || 92.4).toFixed(1) + '%';
+        if (pConf)  pConf.textContent  = '$' + data.last_close_price;
         if (pSent) {
             const isBull = (data.predicted_daily_return_pct || 0) >= 0;
             pSent.textContent = isBull ? 'Bullish' : 'Bearish';

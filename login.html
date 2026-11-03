@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | RAPOS Terminal</title>
+    <title>Log In | RAPOS</title>
     <link rel="stylesheet" href="s1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -71,32 +71,30 @@
 <div class="auth-surface">
     <div style="text-align: center; margin-bottom: 40px;">
         <div class="sidebar-logo" style="padding: 0; margin-bottom: 12px; font-size: 32px;">RAPOS</div>
-        <p style="color: var(--slate-500); font-weight: 500;">Terminal Intelligence Authentication</p>
+        <p style="color: var(--slate-500); font-weight: 500;">Log in to your portfolio</p>
     </div>
 
-    <div id="errorMsg">Authentication node rejected credentials.</div>
+    <div id="errorMsg"></div>
+    <div id="noticeMsg" style="display:none; background: var(--success-bg); color: var(--success); padding: 12px; border-radius: 12px; margin-bottom: 24px; font-size: 13px; font-weight: 600; text-align: center;"></div>
 
     <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
-        <div style="margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.5px;">Identity (Email)</div>
-        <input type="email" id="email" class="input-field" placeholder="operator@rapos.cloud" required>
+        <div style="margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.5px;">Email</div>
+        <input type="email" id="email" class="input-field" placeholder="you@example.com" autocomplete="email" required>
 
-        <div style="margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.5px;">Access Key (Password)</div>
-        <input type="password" id="password" class="input-field" placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó" required>
+        <div style="margin-bottom: 8px; font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 0.5px;">Password</div>
+        <input type="password" id="password" class="input-field" placeholder="Your password" autocomplete="current-password" required>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--slate-500); font-weight: 600; cursor: pointer;">
-                <input type="checkbox" style="width: auto;"> Persistent Session
-            </label>
-            <a href="#" style="font-size: 13px; color: var(--brand-primary); text-decoration: none; font-weight: 700;">Reset Key?</a>
+        <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 32px;">
+            <a href="forgot-password.html" style="font-size: 13px; color: var(--brand-primary); text-decoration: none; font-weight: 700;">Forgot password?</a>
         </div>
 
         <button type="submit" class="btn btn-primary" id="loginBtn" style="width: 100%; padding: 14px; font-size: 16px;">
-            <i class="fas fa-shield-alt"></i> Initialize Session
+            <i class="fas fa-right-to-bracket"></i> Log In
         </button>
     </form>
 
     <div style="text-align: center; margin-top: 32px; font-size: 14px; color: var(--slate-500); font-weight: 500;">
-        New Operator? <a href="signup.html" style="color: var(--brand-primary); text-decoration: none; font-weight: 700;">Request Node Access</a>
+        New to RAPOS? <a href="signup.html" style="color: var(--brand-primary); text-decoration: none; font-weight: 700;">Create an account</a>
     </div>
 </div>
 
@@ -104,13 +102,43 @@
 <script src="js/rapos-config.js"></script>
 <script src="supabase-client.js"></script>
 <script>
+    async function resendConfirmation(email) {
+        const err = document.getElementById('errorMsg');
+        const note = document.getElementById('noticeMsg');
+        const { error } = await supabase.auth.resend({
+            type: 'signup', email,
+            options: { emailRedirectTo: window.location.origin + '/login.html?confirmed=1' }
+        });
+        err.style.display = 'none';
+        note.textContent = error
+            ? 'Could not resend: ' + error.message + (/rate|seconds|too many/i.test(error.message) ? ' (the free email service only sends a few per hour; try again later)' : '')
+            : 'Confirmation email sent to ' + email + '. Open the link in it, then log in here.';
+        note.style.background = error ? 'var(--danger-bg)' : 'var(--success-bg)';
+        note.style.color = error ? 'var(--danger)' : 'var(--success)';
+        note.style.display = 'block';
+    }
+
+    // Arriving from the confirmation email link
+    // (supabase-js reads the token in the URL and signs the user in by itself)
+    if (new URLSearchParams(location.search).get('confirmed') || location.hash.includes('access_token')) {
+        const note = document.getElementById('noticeMsg');
+        note.textContent = 'Email confirmed. You can log in now.';
+        note.style.display = 'block';
+        supabase.auth.getSession().then(({ data }) => {
+            if (data.session) {
+                note.textContent = 'Email confirmed. Opening your dashboard...';
+                setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+            }
+        });
+    }
+
     async function handleLogin() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const btn = document.getElementById('loginBtn');
         const err = document.getElementById('errorMsg');
         
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Authenticating...';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Logging in...';
         btn.disabled = true;
         err.style.display = 'none';
         
@@ -119,13 +147,23 @@
             if (error) throw error;
             if (data.user) {
                 btn.style.background = 'var(--success)';
-                btn.innerHTML = '<i class="fas fa-check"></i> Session Verified';
+                btn.innerHTML = '<i class="fas fa-check"></i> Logged in';
                 setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
             }
         } catch (error) {
-            btn.innerHTML = '<i class="fas fa-shield-alt"></i> Initialize Session';
+            btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> Log In';
             btn.disabled = false;
-            err.textContent = error.message;
+            if (/not confirmed/i.test(error.message || '')) {
+                // Supabase refuses log-in until the sign-up email link is clicked.
+                err.innerHTML = 'Please confirm your email first: open the link we sent to <b></b> ' +
+                    '(check spam too). <br><a href="#" id="resendLink" style="color:inherit; text-decoration:underline;">Resend the confirmation email</a>';
+                err.querySelector('b').textContent = email;
+                document.getElementById('resendLink').onclick = function (e) { e.preventDefault(); resendConfirmation(email); };
+            } else if (/invalid login credentials/i.test(error.message || '')) {
+                err.textContent = 'Wrong email or password.';
+            } else {
+                err.textContent = error.message;
+            }
             err.style.display = 'block';
         }
     }

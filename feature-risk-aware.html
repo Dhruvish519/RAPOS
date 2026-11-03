@@ -35,7 +35,7 @@
             <div class="reveal" style="margin-bottom: 60px;">
                 <h2 style="font-size: 32px; color: var(--text-primary); margin-bottom: 20px;">What is Risk-Aware Optimization?</h2>
                 <p style="font-size: 18px; color: var(--text-secondary); line-height: 1.8;">
-                    Risk-Aware Optimization is the cornerstone of RAPOS. Using advanced quantitative models, we analyze your investment profile, risk tolerance, and financial goals to build portfolios that balance growth potential with downside protection. Our proprietary algorithms consider multiple risk factors including volatility, correlation, and market dynamics to help you make confident investment decisions.
+                    Risk-aware optimisation is the core of RAPOS. You pick a risk profile (Conservative, Moderate or Aggressive) and RAPOS uses Markowitz mean-variance optimisation to find the asset mix with the highest expected return for that profile's volatility target. It works from each asset's historical returns, volatility and correlations; the method is standard and the code is open on GitHub.
                 </p>
             </div>
 
@@ -45,19 +45,19 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
                     <div class="card">
                         <h3 style="font-size: 20px; color: var(--text-primary); margin-bottom: 12px;">Data-Driven Analysis</h3>
-                        <p style="color: var(--text-secondary);">Uses historical data and predictive analytics to identify optimal asset allocations for your risk profile.</p>
+                        <p style="color: var(--text-secondary);">Estimates expected returns, volatility and correlations from historical prices, then solves for the best allocation for your risk profile.</p>
                     </div>
                     <div class="card">
                         <h3 style="font-size: 20px; color: var(--text-primary); margin-bottom: 12px;">Risk Balancing</h3>
-                        <p style="color: var(--text-secondary);">Automatically adjusts portfolio composition to maintain your desired risk level across market conditions.</p>
+                        <p style="color: var(--text-secondary);">Shows how far your current holdings are from the target mix and which trades would close the gap. You decide whether to make them.</p>
                     </div>
                     <div class="card">
-                        <h3 style="font-size: 20px; color: var(--text-primary); margin-bottom: 12px;">Smart Recommendations</h3>
-                        <p style="color: var(--text-secondary);">Receives AI-powered suggestions based on market trends and your investment history.</p>
+                        <h3 style="font-size: 20px; color: var(--text-primary); margin-bottom: 12px;">Efficient Frontier</h3>
+                        <p style="color: var(--text-secondary);">Plots every optimal risk/return combination and marks the minimum-risk and maximum-Sharpe portfolios.</p>
                     </div>
                     <div class="card">
-                        <h3 style="font-size: 20px; color: var(--text-primary); margin-bottom: 12px;">Downside Protection</h3>
-                        <p style="color: var(--text-secondary);">Implements hedging strategies to minimize losses during market downturns.</p>
+                        <h3 style="font-size: 20px; color: var(--text-primary); margin-bottom: 12px;">Risk Breakdown</h3>
+                        <p style="color: var(--text-secondary);">Shows how much each asset contributes to total portfolio risk, so concentration is easy to spot.</p>
                     </div>
                 </div>
             </div>
@@ -69,22 +69,22 @@
                     <div class="card" style="display: flex; gap: 20px; align-items: flex-start;">
                         <div style="background: var(--accent-gradient); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">1</div>
                         <div>
-                            <h4 style="font-size: 18px; margin-bottom: 8px;">Risk Assessment</h4>
-                            <p style="color: var(--text-secondary);">Complete our comprehensive questionnaire to determine your risk profile, investment horizon, and financial objectives.</p>
+                            <h4 style="font-size: 18px; margin-bottom: 8px;">Choose a Risk Profile</h4>
+                            <p style="color: var(--text-secondary);">Pick Conservative, Moderate or Aggressive. Each one sets a target annual volatility (5%, 10% or 18%).</p>
                         </div>
                     </div>
                     <div class="card" style="display: flex; gap: 20px; align-items: flex-start;">
                         <div style="background: var(--accent-gradient); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">2</div>
                         <div>
                             <h4 style="font-size: 18px; margin-bottom: 8px;">Portfolio Analysis</h4>
-                            <p style="color: var(--text-secondary);">Our algorithms analyze market data, historical performance, and correlations between assets to build the optimal portfolio.</p>
+                            <p style="color: var(--text-secondary);">RAPOS estimates each asset's expected return and the covariance between assets from historical prices.</p>
                         </div>
                     </div>
                     <div class="card" style="display: flex; gap: 20px; align-items: flex-start;">
                         <div style="background: var(--accent-gradient); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">3</div>
                         <div>
                             <h4 style="font-size: 18px; margin-bottom: 8px;">Optimization</h4>
-                            <p style="color: var(--text-secondary);">Apply advanced mathematical models (Modern Portfolio Theory, Monte Carlo simulations) to find the best mix of investments.</p>
+                            <p style="color: var(--text-secondary);">A constrained optimiser (SciPy) finds the weights that maximise expected return within the profile's volatility target.</p>
                         </div>
                     </div>
                 </div>
@@ -92,8 +92,8 @@
 
             <div class="card reveal" style="text-align: center; background: rgba(37, 99, 235, 0.05); border-color: rgba(37, 99, 235, 0.1);">
                 <h2 style="margin-bottom: 16px;">Start Optimizing Your Portfolio Today</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 24px;">Experience the power of risk-aware portfolio optimization.</p>
-                <a href="signup.html" class="btn btn-primary" style="padding: 12px 24px;">Create Your Account</a>
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">Try the optimiser on the built-in asset universe, no account needed.</p>
+                <a href="optimizer.html" class="btn btn-primary" style="padding: 12px 24px;">Open the Optimiser</a>
             </div>
 
         </div>

@@ -174,6 +174,13 @@ def test_api_predict_risk_uses_model(client):
     assert j["is_simulated"] is False and j["model_type"] == "LSTM Neural Network"
 
 
+def test_api_predict_risk_unknown_ticker_gives_no_fake_score(client):
+    scores = {client.get("/api/predict-risk", params={"ticker": "AAPL"}).json().get("ai_risk_score")
+              for _ in range(3)}
+    j = client.get("/api/predict-risk", params={"ticker": "AAPL"}).json()
+    assert scores == {None} and "SPXX" in j["available_tickers"] and j["error"]
+
+
 def test_cors_allows_site_and_previews_only(client):
     def preflight(origin):
         return client.options("/api/health", headers={

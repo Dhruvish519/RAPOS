@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up | RAPOS Terminal</title>
+    <title>Create Account | RAPOS</title>
     <link rel="stylesheet" href="s1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -82,48 +82,48 @@
 <div class="auth-surface">
     <div style="text-align: center; margin-bottom: 40px;">
         <div class="sidebar-logo" style="padding: 0; margin-bottom: 12px; font-size: 32px;">RAPOS</div>
-        <p style="color: var(--slate-500); font-weight: 500;">Initialize New Intelligence Node</p>
+        <p style="color: var(--slate-500); font-weight: 500;">Create your RAPOS account</p>
     </div>
 
-    <div id="errorMsg">Node successfully registered to network.</div>
+    <div id="errorMsg"></div>
 
     <form id="signupForm" onsubmit="event.preventDefault(); handleSignup();">
         <div class="form-grid">
             <div>
-                <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Operator First Name</div>
+                <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">First Name</div>
                 <input type="text" id="firstName" class="input-field" placeholder="John" required>
             </div>
             <div>
-                <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Operator Last Name</div>
+                <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Last Name</div>
                 <input type="text" id="lastName" class="input-field" placeholder="Doe" required>
             </div>
         </div>
 
-        <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Identity (Email)</div>
-        <input type="email" id="email" class="input-field" placeholder="operator@rapos.cloud" required>
+        <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Email</div>
+        <input type="email" id="email" class="input-field" placeholder="you@example.com" autocomplete="email" required>
 
-        <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Access Key (Password)</div>
-        <input type="password" id="password" class="input-field" placeholder="Create strong access key" required>
+        <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Password</div>
+        <input type="password" id="password" class="input-field" placeholder="At least 8 characters" minlength="8" autocomplete="new-password" required>
 
-        <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Operational Experience</div>
+        <div style="margin-bottom: 8px; font-size: 11px; font-weight: 700; color: var(--slate-400); text-transform: uppercase;">Investing Experience</div>
         <select id="experience" class="input-field" required>
             <option value="" disabled selected>Select level</option>
-            <option value="beginner">Retail / Beginner</option>
-            <option value="intermediate">Active Trader</option>
-            <option value="advanced">Institutional / Quants</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
         </select>
 
         <p style="font-size: 12px; color: var(--slate-400); margin-bottom: 32px; line-height: 1.6;">
-            By initializing this node, you agree to the <a href="#" style="color:var(--brand-primary); text-decoration:none; font-weight:700;">Operational Protocols</a> and <a href="#" style="color:var(--brand-primary); text-decoration:none; font-weight:700;">Data Privacy Pact</a>.
+            RAPOS is a student project. Your email and portfolio are stored in Supabase and are only visible to you. We'll email you a link to confirm your address.
         </p>
 
         <button type="submit" class="btn btn-primary" id="signupBtn" style="width: 100%; padding: 14px; font-size: 16px;">
-            <i class="fas fa-rocket"></i> Deploy Intelligence Node
+            <i class="fas fa-user-plus"></i> Create Account
         </button>
     </form>
 
     <div style="text-align: center; margin-top: 32px; font-size: 14px; color: var(--slate-500); font-weight: 500;">
-        Already Authorized? <a href="login.html" style="color: var(--brand-primary); text-decoration: none; font-weight: 700;">Sync Existing Session</a>
+        Already have an account? <a href="login.html" style="color: var(--brand-primary); text-decoration: none; font-weight: 700;">Log in</a>
     </div>
 </div>
 
@@ -140,27 +140,44 @@
         const btn = document.getElementById('signupBtn');
         const msg = document.getElementById('errorMsg');
         
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Initializing...';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Creating account...';
         btn.disabled = true;
         msg.style.display = 'none';
 
         try {
             const { data, error } = await supabase.auth.signUp({
                 email, password,
-                options: { data: { full_name, investment_exp } }
+                options: {
+                    data: { full_name, investment_exp },
+                    // the confirmation link brings the user back to this site's log-in page
+                    emailRedirectTo: window.location.origin + '/login.html?confirmed=1'
+                }
             });
             if (error) throw error;
 
             btn.style.background = 'var(--success)';
-            btn.innerHTML = '<i class="fas fa-check"></i> Deployment Successful';
-            msg.textContent = 'Node deployed. Authenticating current session...';
             msg.style.display = 'block';
             msg.style.background = 'var(--success-bg)';
             msg.style.color = 'var(--success)';
-            
-            setTimeout(() => { window.location.href = 'login.html'; }, 2000);
+            if (data.session) {
+                // email confirmation is off: already signed in
+                btn.innerHTML = '<i class="fas fa-check"></i> Account created';
+                msg.textContent = 'Account created. Opening your dashboard...';
+                setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
+            } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+                // Supabase's answer when the email is already registered
+                btn.style.background = '';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+                msg.innerHTML = 'This email already has an account. <a href="login.html" style="color:inherit; text-decoration:underline;">Log in</a> instead.';
+            } else {
+                btn.innerHTML = '<i class="fas fa-envelope"></i> Check your email';
+                msg.innerHTML = 'Almost done: we sent a confirmation link to <b></b>. Open it to activate your account, then log in. ' +
+                    'Can\'t find it? Check spam, or resend it from the log-in page.';
+                msg.querySelector('b').textContent = email;
+            }
         } catch (error) {
-            btn.innerHTML = '<i class="fas fa-rocket"></i> Deploy Intelligence Node';
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
             btn.disabled = false;
             msg.textContent = error.message;
             msg.style.display = 'block';
