@@ -268,3 +268,26 @@ def test_chart_analysis_reports_range_not_direction():
     assert r["low_95"] < r["low_68"] < a["last_close"] < r["high_68"] < r["high_95"]
     assert 92 <= r["past_candles_inside_95_pct"] <= 98        # band is calibrated
     assert "lstm" not in a and a["var_95_pct"] > 0
+
+
+def test_inr_listings_are_converted_to_usd(monkeypatch):
+    import market_data as md
+    idx = pd.bdate_range("2025-01-01", periods=60)
+    inr = pd.Series(np.linspace(2500, 2600, 60), index=idx)       # RELIANCE in rupees
+    fx = pd.Series(np.linspace(83, 85, 60), index=idx)            # rupees per dollar
+    usd = pd.Series(np.linspace(100, 110, 60), index=idx)
+    data = {"RELIANCE.NS": inr, "INR=X": fx, "AAPL": usd}
+    monkeypatch.setattr(md, "history", lambda s, years=2: data[md.normalise(s)])
+    df, err = md.histories(["reliance.ns", "AAPL"])
+    assert not err and md.currency("RELIANCE.NS") == "INR" and md.currency("AAPL") == "USD"
+    assert abs(df["RELIANCE.NS"].iloc[0] - 2500 / 83) < 1e-6 and abs(df["RELIANCE.NS"].iloc[-1] - 2600 / 85) < 1e-6
+    assert md._yahoo_symbol("RELIANCE.NS") == "RELIANCE.NS" and md._yahoo_symbol("BRK.B") == "BRK-B"
+
+
+def test_history_endpoint(client, monkeypatch):
+    import market_data as md
+    idx = pd.bdate_range("2025-01-01", periods=300)
+    monkeypatch.setattr(md, "history", lambda s, years=2: pd.Series(np.linspace(100, 130, 300), index=idx))
+    j = client.get("/api/history", params={"ticker": "TCS.NS", "days": 90}).json()
+    assert j["currency"] == "INR" and len(j["dates"]) == len(j["closes"]) < 80
+    assert j["stats"]["return_pct"] > 0 and j["stats"]["max_drawdown_pct"] == 0

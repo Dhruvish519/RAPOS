@@ -6,6 +6,7 @@ import numpy as np
 import os
 import base64
 import functools
+import time
 import finnhub
 from typing import List, Optional
 
@@ -33,7 +34,8 @@ market_data.set_finnhub(finnhub_client)
 # Popular symbols whose history is fetched at startup, so the first portfolio
 # analysis doesn't wait on the network for them
 PREWARM = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "JPM", "V", "SPY",
-           "QQQ", "TLT", "GLD", "BND", "BTC", "ETH"]
+           "QQQ", "TLT", "GLD", "BND", "BTC", "ETH", "INR=X", "RELIANCE.NS", "TCS.NS",
+           "HDFCBANK.NS", "INFY.NS", "NIFTYBEES.NS"]
 
 
 def _finnhub():
@@ -164,6 +166,33 @@ def get_live_price(ticker: str):
         "low": round(q["low"], 2),
         "previous_close": round(q["previous_close"], 2),
         "source": q["source"],
+    }
+
+
+@app.get("/api/history")
+def get_history(ticker: str, days: int = 365):
+    """Daily closes in the listing's own currency, for the Market Hub chart
+    (served from the same cache the optimiser uses, so it is usually instant)."""
+    days = max(20, min(days, 730))
+    try:
+        ser = market_data.history(ticker, 2)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    ser = ser[ser.index >= ser.index.max() - pd.Timedelta(days=days)]
+    rets = np.diff(np.log(ser.values))
+    peak = np.maximum.accumulate(ser.values)
+    ppy = 365 if market_data.is_crypto(ticker) else 252
+    return {
+        "ticker": market_data.normalise(ticker),
+        "currency": market_data.currency(ticker),
+        "dates": [d.strftime("%Y-%m-%d") for d in ser.index],
+        "closes": [round(float(x), 4) for x in ser.values],
+        "stats": {
+            "return_pct": round(float((ser.iloc[-1] / ser.iloc[0] - 1) * 100), 2),
+            "volatility_pct": round(float(rets.std(ddof=1) * np.sqrt(ppy) * 100), 2) if len(rets) > 1 else None,
+            "max_drawdown_pct": round(float(((ser.values - peak) / peak).min() * 100), 2),
+            "high": round(float(ser.max()), 4), "low": round(float(ser.min()), 4),
+        },
     }
 
 
@@ -428,16 +457,23 @@ def market_discover():
                           for q in movers],
             "intelligence_note": "Largest percentage moves today in the RAPOS watch-list."}
 
+_news_cache: dict = {}
+
+
 @app.get("/api/market-news")
 def get_market_news(category: str = "general"):
-    """
-    Fetches latest market news from Finnhub.
-    """
+    """Latest market headlines from Finnhub (cached 5 minutes)."""
+    hit = _news_cache.get(category)
+    if hit and time.time() - hit[0] < 300:
+        return hit[1]
     try:
         news = _finnhub().general_news(category, min_id=0)
-        return {"news": news[:10]} # Top 10 headlines
+        out = {"news": [{k: n.get(k) for k in ("headline", "source", "datetime", "url", "summary")}
+                        for n in news[:15]]}
+        _news_cache[category] = (time.time(), out)
+        return out
     except Exception as e:
-        return {"news": [], "error": str(e)}
+        return hit[1] if hit else {"news": [], "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

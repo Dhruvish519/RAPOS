@@ -56,8 +56,21 @@ def is_crypto(symbol: str) -> bool:
     return normalise(symbol) in CRYPTO
 
 
+# Indian listings use Yahoo's exchange suffixes: RELIANCE.NS (NSE), RELIANCE.BO (BSE)
+INDIA_SUFFIXES = (".NS", ".BO")
+FX_INR = "INR=X"          # Yahoo: rupees per US dollar
+
+
+def currency(symbol: str) -> str:
+    return "INR" if normalise(symbol).endswith(INDIA_SUFFIXES) else "USD"
+
+
 def _yahoo_symbol(s: str) -> str:
-    return f"{s}-USD" if s in CRYPTO else s.replace(".", "-")   # BRK.B -> BRK-B
+    if s in CRYPTO:
+        return f"{s}-USD"
+    if s.endswith(INDIA_SUFFIXES) or s == FX_INR:
+        return s
+    return s.replace(".", "-")   # BRK.B -> BRK-B
 
 
 # --------------------------------------------------------------------------- history
@@ -75,6 +88,8 @@ def _yahoo_history(s: str, years: int) -> pd.Series:
 
 
 def _stooq_history(s: str, years: int) -> pd.Series:
+    if s.endswith(INDIA_SUFFIXES) or s == FX_INR:
+        raise ValueError("not on Stooq")
     sym = f"{s.lower()}usd" if s in CRYPTO else f"{s.lower().replace('.', '-')}.us"
     r = _session.get("https://stooq.com/q/d/l/", params={"s": sym, "i": "d"}, timeout=TIMEOUT)
     r.raise_for_status()
@@ -124,6 +139,20 @@ def histories(symbols: list[str], years: int = 2) -> tuple[pd.DataFrame, dict[st
             errors[s] = str(e)
     if not series:
         return pd.DataFrame(), errors
+    inr = [s for s in series if currency(s) == "INR"]
+    if inr:
+        # Portfolio maths is in US dollars: convert rupee prices with the
+        # daily USD/INR rate, so FX moves count as part of the asset's risk.
+        try:
+            fx = history(FX_INR, years)
+            for s in inr:
+                series[s] = (series[s] / fx.reindex(series[s].index, method="ffill")).dropna()
+        except Exception as e:
+            for s in inr:
+                errors[s] = f"No USD/INR exchange rate ({type(e).__name__})"
+                series.pop(s)
+            if not series:
+                return pd.DataFrame(), errors
     df = pd.DataFrame(series)
     # Crypto trades every day, stocks on weekdays: keep the days where every
     # stock traded (business days) and carry crypto prices across them.
@@ -158,19 +187,50 @@ def _yahoo_quote(s: str) -> dict:
 
 
 def quote(symbol: str) -> dict:
+    """Live quote. 'price' is in US dollars; 'native_price' in the listing's
+    own currency (INR for .NS/.BO), with 'currency' saying which."""
     s = normalise(symbol)
     now = time.time()
     with _lock:
         hit = _quote_cache.get(s)
     if hit and now - hit[0] < QUOTE_TTL:
         return hit[1]
-    sources = ([_finnhub_quote] if _finnhub_client else []) + [_yahoo_quote]
+    if currency(s) == "INR":
+        try:
+            q = _native_quote(s, [_yahoo_quote], None)
+            fx = _native_quote(FX_INR, [_yahoo_quote], None)["price"]
+        except LookupError:
+            if hit:                      # cached quote is already in USD
+                return {**hit[1], "stale": True}
+            raise
+        out = {**q, "currency": "INR", "native_price": q["price"], "fx_rate": round(fx, 4),
+               "price": round(q["price"] / fx, 4), "change": round(q["change"] / fx, 4),
+               "previous_close": round(q["previous_close"] / fx, 4),
+               "high": round(q["high"] / fx, 4), "low": round(q["low"] / fx, 4)}
+        with _lock:
+            _quote_cache[s] = (now, out)
+        return out
+    q = _native_quote(s, ([_finnhub_quote] if _finnhub_client else []) + [_yahoo_quote], hit)
+    q = {**q, "currency": "USD", "native_price": q["price"]}
+    with _lock:
+        _quote_cache[s] = (now, q)
+    return q
+
+
+def _native_quote(s: str, sources, hit) -> dict:
+    now = time.time()
+    if s == FX_INR:
+        with _lock:
+            fx_hit = _quote_cache.get(s)
+        if fx_hit and now - fx_hit[0] < QUOTE_TTL:
+            return fx_hit[1]
     last_err = None
     for fn in sources:
         try:
             q = {"ticker": s, **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in fn(s).items()}}
-            with _lock:
-                _quote_cache[s] = (now, q)
+            if s == FX_INR:
+                with _lock:
+                    _quote_cache[s] = (now, q)
             return q
         except Exception as e:
             last_err = e
@@ -214,7 +274,7 @@ CRYPTO_NAMES = {"BTC": "Bitcoin", "ETH": "Ethereum", "SOL": "Solana", "XRP": "XR
 
 def _yahoo_search(q: str) -> list[dict]:
     r = _session.get("https://query1.finance.yahoo.com/v1/finance/search",
-                     params={"q": q, "quotesCount": 12, "newsCount": 0}, timeout=TIMEOUT)
+                     params={"q": q, "quotesCount": 15, "newsCount": 0}, timeout=TIMEOUT)
     r.raise_for_status()
     out = []
     for it in r.json().get("quotes", []):
@@ -224,7 +284,10 @@ def _yahoo_search(q: str) -> list[dict]:
             out.append({"symbol": sym[:-4], "name": CRYPTO_NAMES[sym[:-4]], "type": "Crypto"})
         elif kind in ("EQUITY", "ETF", "MUTUALFUND") and it.get("exchange") in US_EXCHANGES and "." not in sym:
             out.append({"symbol": sym, "name": name, "type": "ETF" if kind != "EQUITY" else "Stock",
-                        "exchange": it.get("exchDisp") or it.get("exchange")})
+                        "exchange": it.get("exchDisp") or it.get("exchange"), "currency": "USD"})
+        elif kind in ("EQUITY", "ETF") and sym.endswith(INDIA_SUFFIXES):
+            out.append({"symbol": sym, "name": name, "type": "ETF" if kind == "ETF" else "Stock",
+                        "exchange": "NSE" if sym.endswith(".NS") else "BSE", "currency": "INR"})
     return out
 
 

@@ -93,7 +93,9 @@ def analyse(holdings: list[dict], prices: pd.DataFrame, live: dict[str, dict],
         rows.append({"ticker": t, "quantity": qty[t], "price": round(price, 4),
                      "value": round(values[t], 2),
                      "day_change_pct": round(float(q.get("percent_change", 0.0)), 2),
-                     "price_source": q.get("source", "last close")})
+                     "price_source": q.get("source", "last close"),
+                     "currency": q.get("currency", "INR" if t.endswith((".NS", ".BO")) else "USD"),
+                     "native_price": round(float(q.get("native_price") or price), 4)})
     if cash > 0:
         values["CASH"] = cash
         rows.append({"ticker": "CASH", "quantity": round(cash, 2), "price": 1.0, "value": round(cash, 2),
