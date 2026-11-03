@@ -120,6 +120,9 @@ def analyse(holdings: list[dict], prices: pd.DataFrame, live: dict[str, dict],
     for tr in optimizer.rebalance_trades(values, target):
         p = px.get(tr["asset"], 1.0 if tr["asset"] == "CASH" else None)
         tr["shares"] = round(tr["amount"] / p, 4) if p else None
+        if tr["action"] == "SELL" and target.get(tr["asset"], 0) < 1e-4 and tr["asset"] in qty:
+            tr["shares"] = round(qty[tr["asset"]], 6)          # sell the whole position
+            tr["sell_all"] = True
         trades.append(tr)
     trades.sort(key=lambda t: -t["amount"])
 
