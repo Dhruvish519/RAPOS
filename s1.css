@@ -677,3 +677,10 @@ p {
     .sidebar { transform: translateX(-100%); }
     .main-surface { margin-left: 0; max-width: 100vw; }
 }
+
+/* Selected state for toggle buttons (risk profile, add-holding mode) */
+.btn-secondary.active {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: white;
+}

@@ -178,24 +178,10 @@ def get_quotes(tickers: str):
 
 @app.get("/api/search-stocks")
 def search_stocks(q: str):
-    """
-    Search for symbols/stocks by name.
-    """
-    try:
-        search_results = _finnhub().symbol_lookup(q)
-        # Simplify results for the frontend
-        cleaned = []
-        for item in search_results.get('result', [])[:8]: # Limit to top 8
-            cleaned.append({
-                "symbol": item['symbol'],
-                "displaySymbol": item['displaySymbol'],
-                "description": item['description'],
-                "type": item['type']
-            })
-        return {"query": q, "results": cleaned}
-    except Exception as e:
-        print(f"Search Error: {e}")
-        return {"query": q, "results": [], "error": str(e)}
+    """Search US stocks, ETFs and major crypto by company name or ticker (Yahoo, Finnhub fallback)."""
+    if not q.strip():
+        return {"query": q, "results": []}
+    return {"query": q, "results": market_data.search(q[:40])}
 
 # --- PORTFOLIO OPTIMIZATION ---
 

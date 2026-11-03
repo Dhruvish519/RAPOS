@@ -257,3 +257,14 @@ def test_portfolio_cash_and_value_holdings():
     w = {h["ticker"]: h["weight"] for h in out["holdings"]}
     assert abs(w["AAA"] - 0.25) < 1e-3 and abs(w["CASH"] - 0.5) < 1e-3
     assert out["current"]["volatility"] < 0.5 * out["assets"][0]["volatility"] + 0.2
+
+
+def test_chart_analysis_reports_range_not_direction():
+    import forecast
+    rng = np.random.default_rng(5)
+    closes = 100 * np.exp(np.cumsum(rng.normal(0, 0.02, 400)))
+    a = forecast.analyse(closes)
+    r = a["next_range"]
+    assert r["low_95"] < r["low_68"] < a["last_close"] < r["high_68"] < r["high_95"]
+    assert 92 <= r["past_candles_inside_95_pct"] <= 98        # band is calibrated
+    assert "lstm" not in a and a["var_95_pct"] > 0

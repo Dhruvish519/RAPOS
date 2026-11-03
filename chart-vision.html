@@ -115,7 +115,7 @@
                     <div class="step"><b>Grid &amp; plot area</b><span>Morphological line filters find gridlines and the plot rectangle.</span></div>
                     <div class="step"><b>Candles</b><span>Column runs split candles; row widths separate body from wick.</span></div>
                     <div class="step"><b>Price axis</b><span>Tesseract OCR reads axis labels; a robust fit maps pixels to prices.</span></div>
-                    <div class="step"><b>Analysis</b><span>Volatility, drawdown, trend, risk score and an LSTM signal.</span></div>
+                    <div class="step"><b>Analysis</b><span>Volatility, drawdown, trend, Value at Risk and the likely range of the next candle.</span></div>
                 </div>
             </section>
         </div>
@@ -229,19 +229,21 @@
         if (!a) return;
         const ret = a.period_return_pct;
         $('metrics').innerHTML = [
-            ['AI risk score', `${fmt(a.ai_risk_score, 1)}<span class="muted" style="font-size:16px">/10</span>`, `${a.risk_band} risk`],
+            ['Risk score', `${fmt(a.ai_risk_score, 1)}<span class="muted" style="font-size:16px">/10</span>`, `${a.risk_band} risk (from volatility)`],
             ['Last close', fmt(a.last_close), `${a.n_points} candles · ${a.interval}`],
             ['Period return', `<span class="${ret >= 0 ? 'up' : 'down'}">${ret >= 0 ? '+' : ''}${fmt(ret)}%</span>`, 'first to last close'],
             ['Volatility', `${fmt(a.annualised_volatility_pct, 1)}%`, 'annualised'],
             ['Max drawdown', `<span class="down">${fmt(a.max_drawdown_pct, 1)}%</span>`, 'peak to trough'],
             ['Trend', a.trend, `${a.trend_pct_per_candle >= 0 ? '+' : ''}${fmt(a.trend_pct_per_candle, 3)}% per candle`],
+            ...(a.var_95_pct != null ? [['95% VaR', `<span class="down">-${fmt(a.var_95_pct, 2)}%</span>`, 'worst move in 1 of 20 candles']] : []),
         ].map(([k, v, sub]) => `<div class="metric"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub}</div></div>`).join('');
 
-        const l = a.lstm;
-        $('lstmBox').innerHTML = l ? `<div class="notice info" style="margin-top:18px">
-            <b>LSTM signal:</b> next close ${fmt(l.predicted_next_close)}
-            (<span class="${l.direction === 'Up' ? 'up' : 'down'}">${l.predicted_change_pct >= 0 ? '+' : ''}${fmt(l.predicted_change_pct, 2)}%</span>)
-            vs. no-change baseline ${fmt(l.naive_baseline)} · window: ${l.window}.<br><span class="small">${l.caveat}</span></div>` : '';
+        const r = a.next_range;
+        $('lstmBox').innerHTML = r ? `<div class="notice info" style="margin-top:18px">
+            <b>Next candle, likely range:</b> ${fmt(r.low_68)} &ndash; ${fmt(r.high_68)} (68%) · ${fmt(r.low_95)} &ndash; ${fmt(r.high_95)} (95%),
+            from this chart's own volatility (${fmt(a.candle_volatility_pct, 2)}% per candle).<br>
+            <span class="small">Check: ${fmt(r.past_candles_inside_95_pct, 0)}% of this chart's past candles moved less than the 95% band.
+            RAPOS doesn't guess direction: in testing, an LSTM point forecast was less accurate than assuming no change.</span></div>` : '';
         if (window.innerWidth < 1100) $('resultView').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 

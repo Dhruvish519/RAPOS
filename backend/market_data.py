@@ -202,3 +202,60 @@ def _safe(fn, *a):
         return fn(*a)
     except Exception:
         return None
+
+
+# --------------------------------------------------------------------------- search
+_search_cache: dict[str, tuple[float, list]] = {}
+US_EXCHANGES = {"NMS", "NGM", "NCM", "NYQ", "ASE", "PCX", "BTS", "NAS", "NYS", "NSQ", "PNK"}
+CRYPTO_NAMES = {"BTC": "Bitcoin", "ETH": "Ethereum", "SOL": "Solana", "XRP": "XRP", "ADA": "Cardano",
+                "DOGE": "Dogecoin", "BNB": "BNB", "AVAX": "Avalanche", "DOT": "Polkadot",
+                "LTC": "Litecoin", "MATIC": "Polygon"}
+
+
+def _yahoo_search(q: str) -> list[dict]:
+    r = _session.get("https://query1.finance.yahoo.com/v1/finance/search",
+                     params={"q": q, "quotesCount": 12, "newsCount": 0}, timeout=TIMEOUT)
+    r.raise_for_status()
+    out = []
+    for it in r.json().get("quotes", []):
+        sym, kind = it.get("symbol", ""), it.get("quoteType", "")
+        name = it.get("longname") or it.get("shortname") or sym
+        if kind == "CRYPTOCURRENCY" and sym.endswith("-USD") and sym[:-4] in CRYPTO:
+            out.append({"symbol": sym[:-4], "name": CRYPTO_NAMES[sym[:-4]], "type": "Crypto"})
+        elif kind in ("EQUITY", "ETF", "MUTUALFUND") and it.get("exchange") in US_EXCHANGES and "." not in sym:
+            out.append({"symbol": sym, "name": name, "type": "ETF" if kind != "EQUITY" else "Stock",
+                        "exchange": it.get("exchDisp") or it.get("exchange")})
+    return out
+
+
+def _finnhub_search(q: str) -> list[dict]:
+    res = _finnhub_client.symbol_lookup(q).get("result", [])
+    return [{"symbol": it["symbol"], "name": it["description"].title(),
+             "type": "ETF" if "ETP" in it.get("type", "") or "ETF" in it.get("type", "") else "Stock"}
+            for it in res if "." not in it["symbol"] and ":" not in it["symbol"]][:12]
+
+
+def search(q: str) -> list[dict]:
+    """Company / ETF / crypto search by name or ticker, US listings only (cached 1 h)."""
+    key = q.strip().lower()
+    if not key:
+        return []
+    now = time.time()
+    hit = _search_cache.get(key)
+    if hit and now - hit[0] < 3600:
+        return hit[1]
+    crypto = [{"symbol": s, "name": n, "type": "Crypto"} for s, n in CRYPTO_NAMES.items()
+              if key in s.lower() or key in n.lower()]
+    found = []
+    for fn in [_yahoo_search] + ([_finnhub_search] if _finnhub_client else []):
+        try:
+            found = fn(q)
+            break
+        except Exception:
+            continue
+    seen, out = set(), []
+    for it in crypto + found:
+        if it["symbol"] not in seen:
+            seen.add(it["symbol"]); out.append(it)
+    _search_cache[key] = (now, out[:12])
+    return out[:12]

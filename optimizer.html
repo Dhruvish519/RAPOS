@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="js/rapos-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-client.js"></script>
 </head>
 <body>
 <div class="app-shell tool-shell">
@@ -40,6 +42,7 @@
                     <div style="min-width:200px">
                         <label class="field-label" for="mode" style="margin-top:0">Assets</label>
                         <select id="mode" class="input-field compact">
+                            <option value="mine" disabled>My portfolio (log in to use)</option>
                             <option value="real" selected>Real tickers (live market data)</option>
                             <option value="demo">Built-in demo universe (simulated)</option>
                         </select>
@@ -135,9 +138,25 @@
     }));
     $('rf').onchange = load; $('cap').onchange = load;
     $('mode').onchange = () => { $('tickerBox').classList.toggle('hidden', $('mode').value !== 'real'); load(); };
+    let myHoldings = null;
+    async function initMine() {
+        // Logged in with holdings? Then optimise the user's own portfolio by default.
+        try {
+            const { data } = await supabase.auth.getSession();
+            if (!data.session) return false;
+            const { data: rows, error } = await supabase.from('portfolios').select('ticker, quantity');
+            if (error || !rows || !rows.some(r => (r.ticker || '').toUpperCase() !== 'CASH' && r.quantity > 0)) return false;
+            myHoldings = rows.filter(r => r.quantity > 0).map(r => ({ ticker: r.ticker, quantity: r.quantity }));
+            const opt = $('mode').querySelector('option[value="mine"]');
+            opt.disabled = false; opt.textContent = `My portfolio (${myHoldings.length} holdings)`;
+            $('mode').value = 'mine'; $('tickerBox').classList.add('hidden');
+            return true;
+        } catch (e) { return false; }
+    }
     $('runBtn').onclick = load;
     $('tickers').addEventListener('keydown', e => { if (e.key === 'Enter') load(); });
     const real = () => $('mode').value === 'real' && !custom;
+    const mineMode = () => $('mode').value === 'mine' && !custom;
 
     async function load() {
         $('err').innerHTML = '';
@@ -145,7 +164,10 @@
         const rf = +$('rf').value, cap = +$('cap').value;
         try {
             let res;
-            if (real()) {
+            if ($('mode').value === 'mine' && myHoldings && !custom) {
+                res = await fetch(`${API}/api/portfolio/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile, risk_free: rf, max_weight: cap, holdings: myHoldings }) });
+            } else if (real()) {
                 const list = [...new Set($('tickers').value.split(/[\s,;]+/).map(t => t.trim().toUpperCase()).filter(Boolean))].slice(0, 15);
                 if (list.length < 2) throw new Error('Enter at least two tickers.');
                 // start from an equal-dollar portfolio; the optimiser finds the best mix
@@ -201,13 +223,13 @@
             { label: 'Min variance', data: [pt(d.min_variance)], backgroundColor: '#64748b', pointStyle: 'rectRot', pointRadius: 9 },
             { label: 'Max Sharpe', data: [pt(d.max_sharpe)], backgroundColor: '#f59e0b', pointStyle: 'rectRot', pointRadius: 9 },
             { label: `${d.profile} (yours)`, data: [pt(r)], backgroundColor: '#6366f1', borderColor: '#0f172a', borderWidth: 2, pointStyle: 'rectRot', pointRadius: 12 },
-            ...(d.current ? [{ label: 'Equal weight', data: [pt(d.current)], backgroundColor: '#ef4444', pointStyle: 'triangle', pointRadius: 9 }] : []),
+            ...(d.current ? [{ label: mineMode() ? 'Your portfolio now' : 'Equal weight', data: [pt(d.current)], backgroundColor: '#ef4444', pointStyle: 'triangle', pointRadius: 10 }] : []),
         ] }, options: { maintainAspectRatio: false,
             scales: { x: { title: { display: true, text: 'Volatility (% per year)' }, min: 0 }, y: { title: { display: true, text: 'Expected return (% per year)' } } },
             plugins: { legend: { labels: { usePointStyle: true, boxWidth: 8 } },
                 tooltip: { callbacks: { label: c => `${c.raw.n || c.dataset.label}: return ${c.raw.y.toFixed(1)}%, risk ${c.raw.x.toFixed(1)}%` } } } } });
 
-        const eq = d.current ? [{ ...d.current, label: 'Equal weight (no optimisation)' }] : [];
+        const eq = d.current ? [{ ...d.current, label: mineMode() ? 'Your portfolio now' : 'Equal weight (no optimisation)' }] : [];
         $('cmpBody').innerHTML = [r, d.max_sharpe, d.min_variance, ...eq].map(p => `<tr><td>${p.label}</td>
             <td class="num">${pct(p.expected_return)}</td><td class="num">${pct(p.volatility)}</td><td class="num">${p.sharpe.toFixed(2)}</td></tr>`).join('');
 
@@ -222,7 +244,7 @@
     }
 
     renderChip();
-    load();
+    initMine().finally(load);
 })();
 </script>
 </body>

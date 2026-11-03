@@ -112,10 +112,6 @@
                 <i class="fas fa-chart-pie"></i>
                 <span>Portfolio Optimiser</span>
             </div>
-            <div class="sidebar-item" onclick="window.location.href='dashboard-classic.html'">
-                <i class="fas fa-clock-rotate-left"></i>
-                <span>Terminal Classic</span>
-            </div>
         </div>
 
         <div style="padding: 24px;">
@@ -175,36 +171,28 @@
                             <div id="portfolioDailyChange" class="stat-trend">---</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Live Risk Score</div>
+                            <div class="stat-label">Portfolio Risk Score</div>
                             <div id="aiRiskScoreValue" class="stat-value">---</div>
-                            <div id="riskScoreNote" class="stat-trend" style="color:var(--slate-400);">Volatility-based, 1&ndash;10</div>
+                            <div id="riskScoreNote" class="stat-trend" style="color:var(--slate-400);">Your portfolio, from volatility (1&ndash;10)</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Prediction Card -->
+                <!-- Portfolio risk check (real market data, refreshed with the holdings) -->
                 <div class="card" style="grid-column: span 4;">
                     <div class="card-title">
-                        <i class="fas fa-brain" style="color:var(--brand-secondary);"></i>
-                        LSTM Next-Close Forecast
+                        <i class="fas fa-shield-halved" style="color:var(--brand-secondary);"></i>
+                        Portfolio Risk Check
                     </div>
-                    <select id="tickerSelector" onchange="fetchAIPredictions(this.value)" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--slate-200); background:var(--slate-50); font-weight:600; margin-bottom:16px;">
-                        <option value="SPXX">SPXX: index tracker (simulated)</option>
-                        <option value="TECH">TECH: tech stock (simulated)</option>
-                        <option value="BNDX">BNDX: bond fund (simulated)</option>
-                    </select>
-                    <div style="padding: 16px; background: var(--slate-50); border-radius: 16px; border: 1px solid var(--slate-200);">
-                        <div id="predictedCloseValue" style="font-size: 24px; font-weight: 800; color: var(--brand-primary); margin-bottom: 4px;">$---</div>
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:12px; color:var(--slate-500); font-weight:600;">Last close: <span id="modelConfidence">--</span></span>
-                            <div id="predictedSentiment" class="stat-trend" style="padding:2px 8px; border-radius:6px; font-size:11px; text-transform:uppercase;">---</div>
-                        </div>
-                    </div>
+                    <div id="riskCheck" style="font-size:13px; color:var(--slate-500); line-height:1.6;">Add holdings to see how risky your portfolio is.</div>
+                    <button class="btn btn-secondary" onclick="switchTab('rebalancerTab')" style="width:100%; margin-top:16px;">
+                        <i class="fas fa-sliders-h" style="margin-right:6px;"></i> Open Rebalancer
+                    </button>
                 </div>
 
                 <!-- Holdings List -->
                 <div class="card" style="grid-column: span 12;">
-                    <div class="card-title">Active Portfolio Weights</div>
+                    <div class="card-title">Your Holdings</div>
                     <div id="holdingsList" class="list-container">
                         <div style="text-align: center; padding: 60px; color: var(--slate-400);">Loading your holdings...</div>
                     </div>
@@ -217,9 +205,9 @@
                 </div>
 
                 <div class="card" style="grid-column: span 6;">
-                    <div class="card-title">Market Alpha Discovery</div>
+                    <div class="card-title">Today's Biggest Movers</div>
                     <div id="discoveryList" class="list-container">
-                        <div style="text-align: center; padding: 40px; color: var(--slate-400);">Scanning volumetric data...</div>
+                        <div style="text-align: center; padding: 40px; color: var(--slate-400);">Loading live prices...</div>
                     </div>
                 </div>
             </div>
@@ -259,7 +247,16 @@
                         <button class="btn btn-secondary" id="risk-agg" onclick="setRiskProfile('Aggressive')" title="Target 18% yearly volatility">Aggressive</button>
                     </div>
                 </div>
-                <div id="rbVerdict" style="margin-top:20px; padding:14px 18px; border-radius:12px; background:var(--slate-50); border:1px solid var(--slate-200); font-weight:600; color:var(--slate-700); font-size:14px;">Add holdings on the Portfolio tab, then open this tab to analyse them.</div>
+                <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap; margin-top:20px;">
+                    <div style="flex:0 1 260px;">
+                        <div style="margin-bottom:6px; font-size:11px; font-weight:700; color:var(--slate-400); text-transform:uppercase;">New money to invest (USD)</div>
+                        <input id="rbFunds" type="number" min="0" step="100" value="0" class="input-field" style="margin:0;" placeholder="e.g. 5000">
+                    </div>
+                    <button class="btn btn-secondary" onclick="fetchRebalanceReport()"><i class="fas fa-rotate" style="margin-right:6px;"></i> Update plan</button>
+                    <button class="btn btn-secondary" onclick="exportPortfolioPDF()"><i class="fas fa-file-pdf" style="margin-right:6px;"></i> Export plan as PDF</button>
+                    <div style="font-size:12px; color:var(--slate-500); flex:1; min-width:220px;">Cash you still plan to put into the market. The plan spreads it across your holdings together with any rebalancing.</div>
+                </div>
+                <div id="rbVerdict" style="margin-top:16px; padding:14px 18px; border-radius:12px; background:var(--slate-50); border:1px solid var(--slate-200); font-weight:600; color:var(--slate-700); font-size:14px;">Add holdings on the Portfolio tab, then open this tab to analyse them.</div>
                 <div id="rbMetrics" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:16px;"></div>
             </div>
             <div style="display:grid; grid-template-columns: 3fr 2fr; gap:24px;">
@@ -321,6 +318,7 @@
 </script>
 <script src="supabase-client.js"></script>
 <script src="js/live-ticker.js"></script>
+<script src="js/symbols.js"></script>
 <script src="js/api.js"></script>
 <script src="js/ui.js"></script>
 <script>
@@ -359,11 +357,29 @@
     async function syncTerminalData() {
         const holdings = await RAPOS_API.fetchHoldings();
         RAPOS_UI.updatePortfolio(holdings);
-        fetchAIPredictions(document.getElementById("tickerSelector").value);
+        refreshRiskCheck();
     }
 
-    async function fetchAIPredictions(ticker) {
-        try { const data = await RAPOS_API.fetchAIPredictions(ticker); RAPOS_UI.renderAIPrediction(data); } catch(e) {}
+    // Risk of the user's actual portfolio (same analysis as the Rebalancer)
+    async function refreshRiskCheck() {
+        const box = document.getElementById("riskCheck"), score = document.getElementById("aiRiskScoreValue");
+        const held = (RAPOS_UI.state.holdings || []).filter(h => (h.quantity || 0) > 0);
+        if (!held.some(h => (h.ticker || "").toUpperCase() !== "CASH")) {
+            box.textContent = "Add holdings to see how risky your portfolio is."; score.textContent = "---"; return;
+        }
+        box.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Measuring risk on real prices...';
+        try {
+            const d = await RAPOS_API.analyzePortfolio(held, currentProfile, 0);
+            if (extraFunds() === 0) lastAnalysis = d;
+            const c = d.current, rs = Math.min(Math.max(c.volatility * 100 / 3, 1), 10);
+            score.textContent = rs.toFixed(1) + "/10";
+            box.innerHTML = `<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                <div><div style="font-size:11px; font-weight:700; color:var(--slate-400); text-transform:uppercase;">Volatility</div><div style="font-size:18px; font-weight:800; color:var(--slate-900);">${pct(c.volatility)}</div></div>
+                <div><div style="font-size:11px; font-weight:700; color:var(--slate-400); text-transform:uppercase;">1-day 95% VaR</div><div style="font-size:18px; font-weight:800; color:var(--danger);">${money(c.var_95_1d_value)}</div></div>
+                </div><div style="color:var(--slate-600);">${d.verdict}</div>`;
+        } catch (e) {
+            box.textContent = e.message === "Failed to fetch" ? "Backend is waking up; try again in a minute." : e.message;
+        }
     }
 
     async function loadIntelligenceStreams() {
@@ -374,35 +390,125 @@
         } catch(e) { console.error("Intelligence stream failed", e); }
     }
 
+    // ---- Add a holding: searchable picker with real names ----------------
     window.showTradeModal = function() {
-        const L = t => `<div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;">${t}</div>`;
+        const L = t => `<div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;">${t}</div>`;
         RAPOS_UI.showModal("Add a Holding", `
-            <div style="display:flex;flex-direction:column;gap:16px;">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                    <div>${L("Type")}<select id="addAssetType" class="input-field"><option value="Stocks">Stock</option><option value="ETF">ETF / Fund</option><option value="Crypto">Crypto</option><option value="Cash">Cash (USD)</option></select></div>
-                    <div>${L("Ticker")}<input id="addTicker" type="text" class="input-field" placeholder="e.g. NVDA, SPY, BTC" autocomplete="off"></div>
-                </div>
-                <div>${L("Quantity")}<input id="addQuantity" type="number" step="any" min="0" class="input-field" placeholder="Shares / coins (or dollars for cash)"></div>
-                <div id="addCheck" style="font-size:13px; color:var(--slate-500); min-height:18px;"></div>
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <button type="button" class="btn btn-secondary active" id="modeAsset" style="flex:1;">Stock / ETF / Crypto</button>
+                <button type="button" class="btn btn-secondary" id="modeCash" style="flex:1;">Cash</button>
             </div>
-        `, "Add Holding", async () => {
-            const type = document.getElementById("addAssetType").value;
-            const ticker = type === "Cash" ? "CASH" : document.getElementById("addTicker").value.trim().toUpperCase();
-            const quantity = parseFloat(document.getElementById("addQuantity").value);
-            const check = document.getElementById("addCheck");
-            if (!ticker || !(quantity > 0)) { check.textContent = "Enter a ticker and a quantity above zero."; check.style.color = "var(--danger)"; return; }
-            let name = type === "Cash" ? "Cash" : ticker;
-            if (type !== "Cash") {
-                check.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Checking ' + ticker + "...";
-                check.style.color = "var(--slate-500)";
-                const q = await RAPOS_API.checkTicker(ticker).catch(() => null);
-                if (!q) { check.textContent = "Couldn't find a live price for " + ticker + ". Check the symbol (US tickers like AAPL, or BTC/ETH for crypto)."; check.style.color = "var(--danger)"; return; }
-                name = q.ticker;
-            }
-            const asset = { user_id: RAPOS_UI.state.currentUser.id, asset_name: name, ticker, quantity, asset_type: type };
-            try { await RAPOS_API.saveAsset(asset); RAPOS_UI.closeModal(); RAPOS_UI.showToast(ticker + " added."); syncTerminalData(); }
-            catch (e) { check.textContent = "Could not save: " + e.message; check.style.color = "var(--danger)"; }
+            <div id="assetFields">
+                ${L("Search by company name or ticker")}
+                <div style="position:relative;">
+                    <input id="symSearch" type="text" class="input-field" style="margin:0;" placeholder="e.g. Apple, Nvidia, S&P 500, Bitcoin" autocomplete="off">
+                    <div id="symList" style="display:none; position:absolute; left:0; right:0; top:100%; margin-top:4px; background:white; border:1px solid var(--slate-200); border-radius:12px; box-shadow:0 12px 30px rgba(15,23,42,.12); max-height:260px; overflow-y:auto; z-index:10;"></div>
+                </div>
+                <div id="symPicked" style="display:none; margin-top:12px; padding:12px 14px; background:var(--slate-50); border:1px solid var(--slate-200); border-radius:12px;"></div>
+                <div style="display:grid; grid-template-columns:auto 1fr; gap:12px; margin-top:16px; align-items:end;">
+                    <div>${L("Enter")}<select id="amtMode" class="input-field" style="margin:0;"><option value="qty">Shares / coins</option><option value="usd">Dollar amount</option></select></div>
+                    <div>${L("Amount")}<input id="addAmount" type="number" step="any" min="0" class="input-field" style="margin:0;" placeholder="e.g. 10"></div>
+                </div>
+            </div>
+            <div id="cashFields" style="display:none;">
+                ${L("Cash amount (USD)")}<input id="cashAmount" type="number" step="any" min="0" class="input-field" style="margin:0;" placeholder="e.g. 2500">
+                <div style="font-size:12px; color:var(--slate-500); margin-top:8px;">Cash you hold in your portfolio. For money you only plan to invest, use "New money to invest" in the Rebalancer instead.</div>
+            </div>
+            <div id="addCheck" style="font-size:13px; color:var(--slate-500); min-height:18px; margin-top:12px;"></div>
+        `, "Add Holding", saveHolding);
+
+        let picked = null, mode = "asset", timer = null, seq = 0;
+        const $ = id => document.getElementById(id);
+        const typeLabel = { Stock: "Stock", ETF: "ETF / Fund", Crypto: "Crypto" };
+        const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+        const setMode = m => {
+            mode = m;
+            $("modeAsset").classList.toggle("active", m === "asset"); $("modeCash").classList.toggle("active", m === "cash");
+            $("assetFields").style.display = m === "asset" ? "" : "none"; $("cashFields").style.display = m === "cash" ? "" : "none";
+            $("addCheck").textContent = "";
+        };
+        $("modeAsset").onclick = () => setMode("asset");
+        $("modeCash").onclick = () => setMode("cash");
+
+        function render(items, note) {
+            const list = $("symList");
+            if (!items.length) { list.innerHTML = `<div style="padding:12px 14px; font-size:13px; color:var(--slate-400);">${note || "No matches"}</div>`; list.style.display = ""; return; }
+            list.innerHTML = items.map((it, i) => `<div class="sym-opt" data-i="${i}" style="padding:10px 14px; cursor:pointer; display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--slate-100);">
+                <div><div style="font-weight:700; color:var(--slate-900);">${esc(it.name)}</div><div style="font-size:12px; color:var(--slate-500);">${esc(it.symbol)}${it.exchange ? " · " + esc(it.exchange) : ""}</div></div>
+                <span style="font-size:11px; font-weight:700; color:var(--brand-primary); align-self:center; white-space:nowrap;">${typeLabel[it.type] || it.type}</span></div>`).join("") +
+                (note ? `<div style="padding:8px 14px; font-size:12px; color:var(--slate-400);">${note}</div>` : "");
+            list.style.display = "";
+            list.querySelectorAll(".sym-opt").forEach(el => {
+                el.onmouseenter = () => el.style.background = "var(--slate-50)";
+                el.onmouseleave = () => el.style.background = "";
+                el.onmousedown = e => { e.preventDefault(); pick(items[+el.dataset.i]); };
+            });
+        }
+        function localMatches(q) {
+            q = q.toLowerCase();
+            return (window.RAPOS_SYMBOLS || []).filter(it => it.symbol.toLowerCase().startsWith(q) || it.name.toLowerCase().includes(q))
+                .sort((a, b) => (b.symbol.toLowerCase() === q) - (a.symbol.toLowerCase() === q)).slice(0, 8);
+        }
+        $("symSearch").addEventListener("input", () => {
+            picked = null; $("symPicked").style.display = "none";
+            const q = $("symSearch").value.trim();
+            if (!q) { $("symList").style.display = "none"; return; }
+            const local = localMatches(q);
+            render(local, "Searching all US stocks, ETFs and crypto...");
+            clearTimeout(timer);
+            const my = ++seq;
+            timer = setTimeout(async () => {
+                let remote = [];
+                try { const r = await fetch(`${API_BASE_URL}/api/search-stocks?q=${encodeURIComponent(q)}`); if (r.ok) remote = (await r.json()).results || []; } catch (e) {}
+                if (my !== seq) return;          // a newer search is running
+                const seen = new Set(local.map(i => i.symbol));
+                render([...local, ...remote.filter(i => !seen.has(i.symbol))].slice(0, 10), remote.length || local.length ? "" : "No matches. Try the company name or ticker.");
+            }, 250);
         });
+        $("symSearch").addEventListener("blur", () => setTimeout(() => $("symList").style.display = "none", 150));
+        $("symSearch").addEventListener("keydown", e => {
+            if (e.key === "Enter") { e.preventDefault(); const first = document.querySelector("#symList .sym-opt"); if (first) first.dispatchEvent(new MouseEvent("mousedown")); }
+        });
+
+        async function pick(it) {
+            picked = { ...it, price: null };
+            $("symSearch").value = `${it.name} (${it.symbol})`;
+            $("symList").style.display = "none";
+            const box = $("symPicked");
+            box.style.display = "";
+            box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)} · ${typeLabel[it.type] || it.type}<div style="font-size:13px; color:var(--slate-500); margin-top:4px;"><i class="fas fa-circle-notch fa-spin"></i> Getting live price...</div>`;
+            const q = await RAPOS_API.checkTicker(it.symbol).catch(() => null);
+            if (!picked || picked.symbol !== it.symbol) return;
+            if (!q) { box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)}<div style="font-size:13px; color:var(--danger); margin-top:4px;">No live price available for this listing. Pick another result.</div>`; picked = null; return; }
+            picked.price = q.current_price;
+            box.innerHTML = `<b>${esc(it.name)}</b> · ${esc(it.symbol)} · ${typeLabel[it.type] || it.type}
+                <div style="font-size:13px; color:var(--slate-600); margin-top:4px;">Live price <b>$${q.current_price.toLocaleString()}</b>
+                <span class="${q.percent_change >= 0 ? "trend-up" : "trend-down"}">(${q.percent_change >= 0 ? "+" : ""}${q.percent_change}% today)</span></div>`;
+            $("addAmount").focus();
+        }
+
+        async function saveHolding() {
+            const check = $("addCheck");
+            const fail = t => { check.textContent = t; check.style.color = "var(--danger)"; };
+            let asset;
+            if (mode === "cash") {
+                const amt = parseFloat($("cashAmount").value);
+                if (!(amt > 0)) return fail("Enter a cash amount above zero.");
+                asset = { ticker: "CASH", asset_name: "Cash", asset_type: "Cash", quantity: amt };
+            } else {
+                if (!picked) return fail("Search for an investment and pick it from the list.");
+                if (!picked.price) return fail("Waiting for the live price; try again in a moment.");
+                const amt = parseFloat($("addAmount").value);
+                if (!(amt > 0)) return fail("Enter how many shares, or a dollar amount.");
+                const qty = $("amtMode").value === "usd" ? amt / picked.price : amt;
+                asset = { ticker: picked.symbol, asset_name: picked.name, asset_type: picked.type === "Stock" ? "Stocks" : picked.type, quantity: +qty.toFixed(6) };
+            }
+            try {
+                await RAPOS_API.saveAsset({ user_id: RAPOS_UI.state.currentUser.id, ...asset });
+                RAPOS_UI.closeModal(); RAPOS_UI.showToast(asset.asset_name + " added."); syncTerminalData();
+            } catch (e) { fail("Could not save: " + e.message); }
+        }
+        setTimeout(() => $("symSearch").focus(), 50);
     };
 
     // Keep prices live while the page is open (the backend caches quotes for 30 s)
@@ -415,16 +521,105 @@
         if(confirm("Remove this asset?")) { try { await RAPOS_API.deleteAsset(id); RAPOS_UI.showToast("Holding removed."); syncTerminalData(); } catch(e) { RAPOS_UI.showToast("Could not remove: " + e.message); } }
     };
 
+    // Plain-language suggestions from the analysis, for the PDF report
+    const STRATEGY = {
+        Conservative: "Conservative targets about 5% yearly volatility: capital preservation first. Expect a large cash/low-risk share and small positions in volatile assets.",
+        Moderate: "Moderate targets about 10% yearly volatility: a balance between growth and drawdown control.",
+        Aggressive: "Aggressive targets about 18% yearly volatility: growth first, accepting deeper temporary losses."
+    };
+    function suggestions(d) {
+        const out = [], cur = d.current, rec = d.recommended;
+        out.push(d.verdict);
+        const top = Object.entries(cur.risk_contribution).sort((a, b) => b[1] - a[1])[0];
+        if (top && top[1] > 0.4) out.push(`${top[0]} carries ${pct(top[1], 0)} of your portfolio's risk while being ${pct(cur.weights[top[0]] || 0, 0)} of its value: it dominates how the portfolio behaves.`);
+        Object.entries(cur.weights).filter(([n, w]) => n !== "CASH" && w > 0.4).forEach(([n, w]) => out.push(`${n} is ${pct(w, 0)} of the portfolio; a single-asset concentration above 40% is risky.`));
+        if (rec.volatility < cur.volatility - 0.005) out.push(`Following the plan lowers volatility from ${pct(cur.volatility)} to ${pct(rec.volatility)} and changes the expected return from ${pct(cur.expected_return)} to ${pct(rec.expected_return)} per year.`);
+        else if (rec.expected_return > cur.expected_return + 0.005) out.push(`Following the plan raises the expected return from ${pct(cur.expected_return)} to ${pct(rec.expected_return)} per year, at ${pct(rec.volatility)} volatility (within the ${d.profile} target).`);
+        if (rec.sharpe > cur.sharpe + 0.02) out.push(`Return per unit of risk (Sharpe) improves from ${cur.sharpe.toFixed(2)} to ${rec.sharpe.toFixed(2)}.`);
+        const cashW = rec.weights.CASH || 0;
+        const bonds = ["BND", "AGG", "IEF", "SHY", "TLT"].filter(b => !(b in cur.weights));
+        if (cashW > 0.3) out.push(`The plan holds ${pct(cashW, 0)} in cash: with these assets, that is the only way to stay inside the ${d.profile} risk target.` +
+            (bonds.length ? ` Adding a lower-risk asset such as a bond ETF (${bonds.slice(0, 3).join(", ")}) would let more of the money stay invested.` : ""));
+        if (d.new_funds) {
+            const buys = d.trades.filter(t => t.action === "BUY" && t.asset !== "CASH");
+            out.push(`Of your ${money(d.new_funds)} of new money, the plan puts ${money(buys.reduce((s, t) => s + t.amount, 0))} into: ${buys.map(t => t.asset + " " + money(t.amount)).join(", ") || "nothing new (it stays in cash)"}.`);
+        }
+        Object.keys(d.missing || {}).forEach(t => out.push(`${t} was left out: no price history was found for it.`));
+        out.push(`Your worst expected day (1 in 20 days) is a loss of about ${money(cur.var_95_1d_value)}; the worst fall over the period was ${pct(cur.max_drawdown)}.`);
+        return out;
+    }
+
     window.exportPortfolioPDF = async function() {
-        RAPOS_UI.showToast("Generating PDF...");
+        const held = (RAPOS_UI.state.holdings || []).filter(h => (h.quantity || 0) > 0);
+        if (!held.length) { RAPOS_UI.showToast("Add holdings first."); return; }
+        RAPOS_UI.showToast("Building your report...");
+        let d = lastAnalysis;
+        try {
+            if (!d || d.profile !== currentProfile || (d.new_funds || 0) !== extraFunds()) {
+                d = await RAPOS_API.analyzePortfolio(held, currentProfile, extraFunds());
+                d.new_funds = extraFunds(); lastAnalysis = d;
+            }
+        } catch (e) { RAPOS_UI.showToast("Could not analyse the portfolio: " + e.message); return; }
+
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.setFont("Helvetica","bold"); doc.setFontSize(22); doc.setTextColor(59,130,246); doc.text("RAPOS: PORTFOLIO REPORT", 20, 20);
-        doc.setFont("Helvetica","normal"); doc.setFontSize(10); doc.setTextColor(100,116,139); doc.text("Target: " + RAPOS_UI.state.currentUser.email, 20, 30);
-        doc.text("Timestamp: " + new Date().toLocaleString(), 20, 36);
-        let y = 50; doc.setFontSize(12); doc.setTextColor(15,23,42);
-        RAPOS_UI.state.holdings.forEach(h => { doc.text(h.ticker + ": " + h.quantity + " units - $" + (h.live_value||0).toLocaleString(), 20, y); y += 10; });
-        doc.save("RAPOS_Report_" + Date.now() + ".pdf");
+        const doc = new jsPDF({ unit: "mm", format: "a4" });
+        const W = 210, M = 16; let y = 18;
+        const need = h => { if (y + h > 282) { doc.addPage(); y = 18; } };
+        const h1 = t => { y += 3; need(14); doc.setFont("Helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(37, 99, 235); doc.text(t, M, y); y += 7; };
+        const para = (t, size = 10) => { doc.setFont("Helvetica", "normal"); doc.setFontSize(size); doc.setTextColor(30, 41, 59);
+            doc.splitTextToSize(t, W - 2 * M).forEach(l => { need(5); doc.text(l, M, y); y += 5; }); y += 1; };
+        const table = (cols, rows, widths) => {
+            const xs = widths.reduce((a, w) => [...a, a[a.length - 1] + w], [M]);
+            need(8); doc.setFont("Helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+            cols.forEach((c, i) => doc.text(c, i ? xs[i + 1] - 2 : xs[i], y, { align: i ? "right" : "left" })); y += 2;
+            doc.setDrawColor(226, 232, 240); doc.line(M, y, W - M, y); y += 4;
+            doc.setFont("Helvetica", "normal"); doc.setTextColor(15, 23, 42);
+            rows.forEach(r => { need(6); r.forEach((c, i) => doc.text(String(c), i ? xs[i + 1] - 2 : xs[i], y, { align: i ? "right" : "left" })); y += 5.5; });
+            y += 3;
+        };
+        const nm = n => n === "CASH" ? "Cash" : n;
+
+        doc.setFont("Helvetica", "bold"); doc.setFontSize(20); doc.setTextColor(15, 23, 42); doc.text("RAPOS Portfolio Report", M, y); y += 7;
+        doc.setFont("Helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(100, 116, 139);
+        doc.text(`${RAPOS_UI.state.currentUser.email}  ·  ${new Date().toLocaleString()}  ·  Strategy: ${d.profile}`, M, y); y += 5;
+        doc.text(`Real daily prices ${d.history.start} to ${d.history.end} (${d.history.days} trading days)`, M, y); y += 9;
+
+        h1("Summary");
+        para(`Portfolio value: ${money(d.total_value - (d.new_funds || 0))}` + (d.new_funds ? `  +  new money to invest: ${money(d.new_funds)}  =  ${money(d.total_value)}` : ""));
+        para(STRATEGY[d.profile]);
+
+        h1("Risk: now vs. after the plan");
+        const c = d.current, r = d.recommended;
+        table(["Measure", "Now", "After plan"], [
+            ["Volatility (per year)", pct(c.volatility), pct(r.volatility)],
+            ["Expected return (per year, estimate)", pct(c.expected_return), pct(r.expected_return)],
+            ["Sharpe ratio", c.sharpe.toFixed(2), r.sharpe.toFixed(2)],
+            ["1-day 95% Value at Risk", money(c.var_95_1d_value), ""],
+            ["Maximum drawdown over the period", pct(c.max_drawdown), ""],
+        ], [96, 40, 42]);
+
+        h1("Holdings");
+        table(["Asset", "Quantity", "Price", "Value", "Weight", "Share of risk"],
+            d.holdings.map(h => [nm(h.ticker), h.ticker === "CASH" ? "" : (+h.quantity.toFixed(4)).toLocaleString(), h.ticker === "CASH" ? "" : "$" + h.price.toLocaleString(undefined, {maximumFractionDigits: 2}),
+                                 money(h.value), pct(h.weight), pct(Math.max(0, c.risk_contribution[h.ticker] || 0), 0)]),
+            [36, 28, 28, 30, 26, 30]);
+
+        h1(`Suggested actions (${d.profile})`);
+        const tr = {}; d.trades.forEach(t => tr[t.asset] = t);
+        const names = Object.keys(r.weights).filter(n => (r.weights[n] || 0) > 0.0005 || (c.weights[n] || 0) > 0.0005)
+            .sort((a, b) => r.weights[b] - r.weights[a]);
+        table(["Asset", "Now", "Target", "Action", "Amount", "Shares"], names.map(n => {
+            const t = tr[n];
+            return [nm(n), pct(c.weights[n] || 0), pct(r.weights[n] || 0), t ? t.action : "HOLD", t ? money(t.amount) : "", t && n !== "CASH" && t.shares ? (+t.shares.toFixed(4)).toLocaleString() : ""];
+        }), [36, 24, 24, 26, 34, 34]);
+
+        h1("What this means");
+        suggestions(d).forEach(s => para("•  " + s));
+
+        h1("Method");
+        para(`${d.method}. Long-only, at most ${pct(d.max_weight, 0)} per asset; cash earns the ${pct(d.risk_free, 0)} risk-free rate. Expected returns are estimates from past prices and are uncertain. RAPOS is a student project: this report is not financial advice and no orders were placed.`, 8.5);
+
+        doc.save(`RAPOS_${d.profile}_Plan_${new Date().toISOString().slice(0, 10)}.pdf`);
         RAPOS_UI.showToast("Report downloaded.");
     };
 
@@ -436,6 +631,7 @@
     };
 
     let lastAnalysis = null;
+    const extraFunds = () => Math.max(0, parseFloat((document.getElementById("rbFunds") || {}).value) || 0);
     const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
     const money = v => "$" + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
@@ -452,7 +648,8 @@
         verdict.style.background = "var(--slate-50)"; verdict.style.color = "var(--slate-700)";
         try {
             const t0 = performance.now();
-            const d = await RAPOS_API.analyzePortfolio(holdings, currentProfile);
+            const d = await RAPOS_API.analyzePortfolio(holdings, currentProfile, extraFunds());
+            d.new_funds = extraFunds();
             lastAnalysis = d;
             renderRebalanceReport(d, Math.round(performance.now() - t0));
             applyBtn.disabled = !d.trades.length;
@@ -468,7 +665,8 @@
         const cur = d.current, rec = d.recommended;
         const risky = cur.volatility > d.target_volatility + 0.02;
         const v = document.getElementById("rbVerdict");
-        v.textContent = d.verdict + (d.trades.length ? "" : " No trades needed.");
+        v.textContent = d.verdict + (d.trades.length ? "" : " No trades needed.") +
+            (d.new_funds ? ` Plan includes ${money(d.new_funds)} of new money.` : "");
         v.style.background = risky ? "var(--danger-bg)" : "var(--success-bg)";
         v.style.color = risky ? "var(--danger)" : "var(--success)";
 
@@ -521,7 +719,7 @@
         const d = lastAnalysis;
         if (!d || !d.trades.length) return;
         const lines = d.trades.map(t => `${t.action} ${t.asset === "CASH" ? "cash" : t.asset} ${money(t.amount)}`).join("<br>");
-        RAPOS_UI.showModal("Apply rebalance?", `<p style="font-size:14px; color:var(--slate-600); line-height:1.6;">This updates the quantities RAPOS tracks to the ${d.profile} target. No real orders are placed.</p>
+        RAPOS_UI.showModal("Apply rebalance?", `<p style="font-size:14px; color:var(--slate-600); line-height:1.6;">This updates the quantities RAPOS tracks to the ${d.profile} target${d.new_funds ? `, including the ${money(d.new_funds)} of new money` : ""}. No real orders are placed.</p>
             <div style="margin-top:12px; font-size:13px; font-weight:600;">${lines}</div>`, "Apply", async () => {
             RAPOS_UI.closeModal();
             try {

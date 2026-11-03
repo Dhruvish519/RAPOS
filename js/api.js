@@ -72,14 +72,15 @@ const RAPOS_API = {
     },
 
     /** Real-portfolio risk analysis + optimisation (backend /api/portfolio/analyze). */
-    async analyzePortfolio(holdings, profile) {
+    async analyzePortfolio(holdings, profile, newFunds = 0) {
+        // newFunds: money not yet invested; added as cash so the optimiser
+        // can suggest how to deploy it together with the existing holdings
+        const list = holdings.filter(h => (h.quantity || 0) > 0)
+                             .map(h => ({ ticker: h.ticker, quantity: h.quantity }));
+        if (newFunds > 0) list.push({ ticker: 'CASH', quantity: newFunds });
         const res = await fetch(`${API_BASE_URL}/api/portfolio/analyze`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                profile,
-                holdings: holdings.filter(h => (h.quantity || 0) > 0)
-                                  .map(h => ({ ticker: h.ticker, quantity: h.quantity }))
-            })
+            body: JSON.stringify({ profile, holdings: list })
         });
         const data = await res.json();
         if (!res.ok) {

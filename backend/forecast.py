@@ -63,8 +63,15 @@ def analyse(closes, interval: str = "1D") -> dict:
     sortino_den = downside.std(ddof=1) * np.sqrt(ppy) if len(downside) > 1 else np.nan
     ann_ret = float(rets.mean() * ppy)
 
-    pred, note = lstm_next(c)
     risk_score = float(min(max(vol / 3.0, 1.0), 10.0))   # same scale as /api/predict-risk
+    # Next-candle range from the chart's own volatility (log-normal, 68 % and
+    # 95 %). Tested: the LSTM point forecast was ~2x less accurate than "no
+    # change" and called direction <50 % of the time, so RAPOS reports risk
+    # (how far price may move) instead of a guessed direction.
+    sd = float(rets.std(ddof=1)) if len(rets) > 1 else 0.0
+    last = float(c[-1])
+    inside = float(np.mean(np.abs(rets) <= 1.96 * sd) * 100) if sd > 0 else 100.0
+    var95 = float(-np.percentile(rets, 5) * 100) if len(rets) >= 20 else None
     out = {
         "n_points": int(len(c)),
         "interval": interval,
@@ -77,19 +84,14 @@ def analyse(closes, interval: str = "1D") -> dict:
         "sortino": (round(float(ann_ret / sortino_den), 2)
                     if sortino_den and np.isfinite(sortino_den) and sortino_den > 0 else None),
         "ai_risk_score": round(risk_score, 1),
+        "risk_score_method": "annualised volatility / 3, clipped to 1-10",
         "risk_band": "Low" if risk_score < 4 else ("Medium" if risk_score < 7 else "High"),
-        "lstm": None,
+        "candle_volatility_pct": round(sd * 100, 3),
+        "var_95_pct": round(var95, 2) if var95 is not None else None,
+        "next_range": {
+            "low_68": round(last * float(np.exp(-sd)), 4), "high_68": round(last * float(np.exp(sd)), 4),
+            "low_95": round(last * float(np.exp(-1.96 * sd)), 4), "high_95": round(last * float(np.exp(1.96 * sd)), 4),
+            "past_candles_inside_95_pct": round(inside, 1),
+        },
     }
-    if pred is not None:
-        out["lstm"] = {
-            "predicted_next_close": round(pred, 4),
-            "predicted_change_pct": round(float((pred / c[-1] - 1) * 100), 3),
-            "direction": "Up" if pred > c[-1] else "Down",
-            "window": note,
-            # On random-walk-like prices the best simple forecast is "no
-            # change"; report it so users can judge the model fairly.
-            "naive_baseline": round(float(c[-1]), 4),
-            "caveat": "Experimental. Short-horizon price moves are close to random; "
-                      "treat this as a signal, not a prediction.",
-        }
     return out
