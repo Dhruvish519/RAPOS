@@ -145,17 +145,8 @@
     <!-- Main Content -->
     <main class="main-surface">
         <!-- Ticker -->
-        <div class="ticker-container" style="margin: -40px -40px 40px; width: calc(100% + 80px);">
-            <div class="ticker-wrap">
-                <div class="ticker-item"><span>BTC/USD</span> <span class="trend-up">$64,321 (+1.2%)</span></div>
-                <div class="ticker-item"><span>NVDA</span> <span class="trend-up">$854.12 (+2.4%)</span></div>
-                <div class="ticker-item"><span>TSLA</span> <span class="trend-down">$175.22 (-0.8%)</span></div>
-                <div class="ticker-item"><span>AAPL</span> <span class="trend-up">$189.44 (+0.4%)</span></div>
-                <div class="ticker-item"><span>BTC/USD</span> <span class="trend-up">$64,321 (+1.2%)</span></div>
-                <div class="ticker-item"><span>NVDA</span> <span class="trend-up">$854.12 (+2.4%)</span></div>
-                <div class="ticker-item"><span>TSLA</span> <span class="trend-down">$175.22 (-0.8%)</span></div>
-                <div class="ticker-item"><span>AAPL</span> <span class="trend-up">$189.44 (+0.4%)</span></div>
-            </div>
+        <div class="ticker-container" data-live-ticker-box style="display:none; margin: -40px -40px 40px; width: calc(100% + 80px);">
+            <div class="ticker-wrap" data-live-ticker></div>
         </div>
 
         <!-- Portfolio Tab -->
@@ -312,6 +303,7 @@
         });
 </script>
 <script src="supabase-client.js"></script>
+<script src="js/live-ticker.js"></script>
 <script src="js/api.js"></script>
 <script src="js/ui.js"></script>
 <script>

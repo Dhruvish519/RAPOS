@@ -200,21 +200,9 @@
 
 <body class="dashboard-body">
 
-    <!-- Institutional Ticker -->
-    <div class="ticker-wrap">
-        <div class="ticker">
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>BTC/USD</span> <span class="ticker-up">$64,321 (+1.2%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>NVDA</span> <span class="ticker-up">$854.12 (+2.4%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>TSLA</span> <span class="ticker-down">$175.22 (-0.8%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>AAPL</span> <span class="ticker-up">$189.44 (+0.4%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>GOLD</span> <span class="ticker-up">$2,342 (+1.1%)</span></div>
-            <!-- Duplicate for seamless loop -->
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>BTC/USD</span> <span class="ticker-up">$64,321 (+1.2%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>NVDA</span> <span class="ticker-up">$854.12 (+2.4%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>TSLA</span> <span class="ticker-down">$175.22 (-0.8%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>AAPL</span> <span class="ticker-up">$189.44 (+0.4%)</span></div>
-            <div class="ticker-item" style="color:var(--text-secondary);"><span>GOLD</span> <span class="ticker-up">$2,342 (+1.1%)</span></div>
-        </div>
+    <!-- Live price ticker (js/live-ticker.js): real Finnhub quotes, hidden if unavailable -->
+    <div class="ticker-wrap" data-live-ticker-box style="display:none;">
+        <div class="ticker" data-live-ticker></div>
     </div>
 
     <!-- Navigation -->
@@ -374,6 +362,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/rapos-config.js"></script>
 <script src="supabase-client.js"></script>
+<script src="js/live-ticker.js"></script>
 
 <script>
     // Global state for dynamic data
