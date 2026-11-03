@@ -192,3 +192,68 @@ def test_cors_allows_site_and_previews_only(client):
         assert r.headers.get("access-control-allow-credentials") == "true"
     r = preflight("https://evil.example.com")
     assert "access-control-allow-origin" not in r.headers
+
+
+# ------------------------------------------------------------- real portfolio
+def _fake_prices(seed=1, n=300):
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2024-01-01", periods=n)
+    vols = {"AAA": 0.035, "BBB": 0.015, "CCC": 0.006}       # risky, medium, calm
+    return pd.DataFrame({t: 100 * np.exp(np.cumsum(rng.normal(0.0004, v, n)))
+                         for t, v in vols.items()}, index=idx)
+
+
+def test_portfolio_analysis_risk_and_trades():
+    import portfolio
+    prices = _fake_prices()
+    holdings = [{"ticker": "AAA", "quantity": 10}, {"ticker": "BBB", "quantity": 5},
+                {"ticker": "aaa", "quantity": 5}]                       # same ticker summed
+    live = {"AAA": {"price": float(prices.AAA.iloc[-1]), "percent_change": 1.0, "source": "test"}}
+    out = portfolio.analyse(holdings, prices, live, profile="Conservative")
+    assert {h["ticker"] for h in out["holdings"]} == {"AAA", "BBB"}       # CCC not held: ignored
+    assert abs(sum(h["weight"] for h in out["holdings"]) - 1) < 1e-3
+    cur = out["current"]
+    assert cur["volatility"] > out["target_volatility"]                   # concentrated in AAA
+    assert out["recommended"]["volatility"] <= out["target_volatility"] + 1e-3
+    assert 0 < cur["var_95_1d_pct"] < 0.2 and cur["max_drawdown"] < 0
+    assert abs(sum(cur["risk_contribution"].values()) - 1) < 1e-3
+    sells = {t["asset"]: t for t in out["trades"] if t["action"] == "SELL"}
+    assert "AAA" in sells and sells["AAA"]["shares"] > 0                  # de-risk the volatile stock
+    total_after = out["total_value"] + sum(t["amount"] * (1 if t["action"] == "BUY" else -1)
+                                           for t in out["trades"])
+    assert abs(total_after - out["total_value"]) < 0.02 * out["total_value"]   # trades are self-funding
+
+
+def test_api_portfolio_analyze(client, monkeypatch):
+    import market_data
+    prices = _fake_prices(2)
+    monkeypatch.setattr(market_data, "histories",
+                        lambda syms, years=2: (prices[[s for s in syms if s in prices]],
+                                               {s: "no data" for s in syms if s not in prices}))
+    monkeypatch.setattr(market_data, "quotes", lambda syms: {s: {"ticker": s, "error": "offline"} for s in syms})
+    r = client.post("/api/portfolio/analyze", json={
+        "holdings": [{"ticker": "AAA", "quantity": 3}, {"ticker": "CCC", "quantity": 20},
+                     {"ticker": "ZZZ", "quantity": 1}], "profile": "Aggressive"})
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["missing"] == {"ZZZ": "no data"} and j["profile"] == "Aggressive"
+    assert set(j["recommended"]["weights"]) == {"AAA", "CCC", "CASH"}
+    assert client.post("/api/portfolio/analyze", json={"holdings": [{"ticker": "ZZZ", "quantity": 1}]}).status_code == 422
+    assert client.post("/api/portfolio/analyze", json={"holdings": [{"ticker": "AAA", "quantity": 1}],
+                                                       "profile": "YOLO"}).status_code == 400
+
+
+def test_symbol_normalisation():
+    import market_data as md
+    assert md.normalise(" btc-usd ") == "BTC" and md.normalise("ETHUSDT") == "ETH"
+    assert md.normalise("aapl") == "AAPL" and md.normalise("USDC") == "USDC"
+
+
+def test_portfolio_cash_and_value_holdings():
+    import portfolio
+    prices = _fake_prices(3)
+    out = portfolio.analyse([{"ticker": "AAA", "value": 1000}, {"ticker": "BBB", "value": 1000},
+                             {"ticker": "CASH", "quantity": 2000}], prices, {}, profile="Moderate")
+    w = {h["ticker"]: h["weight"] for h in out["holdings"]}
+    assert abs(w["AAA"] - 0.25) < 1e-3 and abs(w["CASH"] - 0.5) < 1e-3
+    assert out["current"]["volatility"] < 0.5 * out["assets"][0]["volatility"] + 0.2

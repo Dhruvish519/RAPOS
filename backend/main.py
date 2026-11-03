@@ -11,6 +11,8 @@ from typing import List, Optional
 
 import cv2
 import optimizer
+import market_data
+import portfolio
 import forecast
 import lstm_numpy
 from cv.chart_digitizer import digitize, OCR_AVAILABLE
@@ -25,6 +27,14 @@ FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
 finnhub_client = finnhub.Client(api_key=FINNHUB_KEY) if FINNHUB_KEY else None
 if not FINNHUB_KEY:
     print("RAPOS WARNING: FINNHUB_API_KEY not set - live market endpoints will return errors.")
+
+market_data.set_finnhub(finnhub_client)
+
+# Popular symbols whose history is fetched at startup, so the first portfolio
+# analysis doesn't wait on the network for them
+PREWARM = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "JPM", "V", "SPY",
+           "QQQ", "TLT", "GLD", "BND", "BTC", "ETH"]
+
 
 def _finnhub():
     if finnhub_client is None:
@@ -76,6 +86,7 @@ def load_assets():
     except Exception as e:
         loaded_model = None
         print(f"RAPOS AI Error loading model: {e}")
+    market_data.prewarm(PREWARM)
 
 # --- AI ENDPOINTS ---
 
@@ -139,35 +150,31 @@ def predict_risk(ticker: str = 'SPXX'):
 
 @app.get("/api/live-price")
 def get_live_price(ticker: str):
-    """
-    Fetches real-time price from Finnhub.
-    """
+    """Current price and day change (Finnhub, Yahoo fallback; cached 30 s)."""
     try:
-        # Quote data from Finnhub
-        # c: Current price, d: Change, dp: Percent change
-        quote = _finnhub().quote(ticker.upper())
-        
-        if not quote or quote['c'] == 0:
-            raise HTTPException(status_code=404, detail="Ticker not found or no data.")
+        q = market_data.quote(ticker)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {
+        "ticker": q["ticker"],
+        "current_price": round(q["price"], 2),
+        "change": round(q["change"], 2),
+        "percent_change": round(q["percent_change"], 2),
+        "high": round(q["high"], 2),
+        "low": round(q["low"], 2),
+        "previous_close": round(q["previous_close"], 2),
+        "source": q["source"],
+    }
 
-        return {
-            "ticker": ticker.upper(),
-            "current_price": round(float(quote['c']), 2),
-            "change": round(float(quote['d']), 2),
-            "percent_change": round(float(quote['dp']), 2),
-            "high": round(float(quote['h']), 2),
-            "low": round(float(quote['l']), 2),
-            "previous_close": round(float(quote['pc']), 2),
-            "timestamp": os.getlogin() if os.name == 'nt' else 'render' # logging metadata
-        }
-    except Exception as e:
-        print(f"Market Data Error: {e}")
-        return {
-            "ticker": ticker,
-            "error": "Failed to fetch live price",
-            "current_price": 0,
-            "percent_change": 0
-        }
+
+@app.get("/api/quotes")
+def get_quotes(tickers: str):
+    """Batch live prices: /api/quotes?tickers=AAPL,MSFT,BTC (fetched in parallel)."""
+    syms = [t for t in tickers.split(",") if t.strip()][:40]
+    if not syms:
+        raise HTTPException(400, "Pass tickers=AAPL,MSFT,...")
+    return {"quotes": market_data.quotes(syms)}
+
 
 @app.get("/api/search-stocks")
 def search_stocks(q: str):
@@ -299,6 +306,56 @@ def optimize_custom(req: OptimizeRequest):
         raise HTTPException(400, str(e))
 
 
+# --- REAL PORTFOLIO: risk analysis + optimisation ---
+
+class Holding(BaseModel):
+    ticker: str = Field(..., min_length=1, max_length=15)
+    quantity: Optional[float] = Field(None, gt=0)   # shares (or dollars for CASH)
+    value: Optional[float] = Field(None, gt=0)      # ...or a dollar amount
+
+
+class PortfolioRequest(BaseModel):
+    holdings: List[Holding] = Field(..., min_length=1, max_length=30)
+    profile: str = "Moderate"
+    risk_free: float = 0.04
+    max_weight: float = 0.6
+    years: int = Field(2, ge=1, le=5)
+
+
+@app.post("/api/portfolio/analyze")
+def analyze_portfolio(req: PortfolioRequest):
+    """
+    Risk-aware optimisation of the user's real holdings: current risk
+    (volatility, VaR, drawdown, risk contributions), the optimal mix for the
+    risk profile over the same assets plus cash, and the trades to get there.
+    Uses real daily prices (Yahoo/Stooq) and live quotes (Finnhub/Yahoo).
+    """
+    if not 0 <= req.risk_free < 0.5 or not 0.1 <= req.max_weight <= 1:
+        raise HTTPException(400, "risk_free must be in [0, 0.5) and max_weight in [0.1, 1]")
+    if req.profile not in optimizer.PROFILE_TARGET_VOL:
+        raise HTTPException(400, f"profile must be one of {list(optimizer.PROFILE_TARGET_VOL)}")
+    if any(h.quantity is None and h.value is None for h in req.holdings):
+        raise HTTPException(400, "Each holding needs a quantity or a value")
+    holdings = [{"ticker": market_data.normalise(h.ticker), "quantity": h.quantity, "value": h.value}
+                for h in req.holdings]
+    syms = [h["ticker"] for h in holdings if h["ticker"] != "CASH"]
+    if not syms:
+        raise HTTPException(422, "Add at least one stock, ETF or crypto holding to analyse.")
+    hist_f = market_data._pool.submit(market_data.histories, syms, req.years)
+    live = market_data.quotes(syms)           # runs while history downloads
+    prices, missing = hist_f.result()
+    if not any(h["ticker"] in prices.columns for h in holdings):
+        raise HTTPException(422, {"message": "Couldn't get price history for any holding.",
+                                  "missing": missing})
+    try:
+        out = portfolio.analyse(holdings, prices, {k: v for k, v in live.items() if "error" not in v},
+                                profile=req.profile, risk_free=req.risk_free, max_weight=req.max_weight)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(422, str(e))
+    out["missing"] = missing
+    return out
+
+
 # --- CHART VISION (OpenCV) ---
 
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
@@ -366,38 +423,24 @@ def analyze_series(closes: List[float], interval: str = "1D"):
 @app.get("/api/health")
 def health():
     return {"status": "ok", "ocr": OCR_AVAILABLE, "lstm": forecast.load_model() is not None,
-            "market_data": finnhub_client is not None}
+            "market_data": finnhub_client is not None,
+            "history_cached": len(market_data._hist_cache),
+            "history_sources": sorted(set(market_data.last_source.values()))}
 
 
 # --- WEALTH HISTORY & NEWS ---
 
 @app.get("/api/market-discover")
 def market_discover():
-    """
-    RAPOS AI Market Insight: Finds the top gainers from a curated Alpha List.
-    """
-    alpha_tickers = ["NVDA", "TSLA", "AAPL", "MSFT", "BTC-USD", "ETH-USD", "GOOGL", "AMD"]
-    raw_results = []
-    
-    for ticker in alpha_tickers:
-        try:
-            # Finnhub requires BTC-USD style for quote? 
-            # Actually standard BTC usually works if mapped correctly. 
-            # We will try a simple quote first.
-            t = ticker.replace("-USD", "")
-            quote = _finnhub().quote(t)
-            if quote and quote['c'] > 0:
-                raw_results.append({
-                    "ticker": ticker,
-                    "price": round(float(quote['c']), 2),
-                    "change": round(float(quote['dp']), 2),
-                    "sentiment": "Bullish" if quote['dp'] > 0 else "Bearish"
-                })
-        except: continue
-        
-    # Sort by percentage change descending
-    sorted_gainers = sorted(raw_results, key=lambda x: x['change'], reverse=True)
-    return {"discovery": sorted_gainers[:4], "intelligence_note": "AI analysis suggests high-momentum accumulation in these tickers."}
+    """Today's biggest movers among a fixed watch-list (live quotes, fetched in parallel)."""
+    watch = ["NVDA", "TSLA", "AAPL", "MSFT", "GOOGL", "AMD", "AMZN", "META", "BTC", "ETH"]
+    qs = [q for q in market_data.quotes(watch).values() if "error" not in q]
+    movers = sorted(qs, key=lambda q: -q["percent_change"])[:4]
+    return {"discovery": [{"ticker": q["ticker"], "price": round(q["price"], 2),
+                           "change": round(q["percent_change"], 2),
+                           "sentiment": "Up today" if q["percent_change"] > 0 else "Down today"}
+                          for q in movers],
+            "intelligence_note": "Largest percentage moves today in the RAPOS watch-list."}
 
 @app.get("/api/market-news")
 def get_market_news(category: str = "general"):

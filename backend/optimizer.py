@@ -68,15 +68,17 @@ def _stats(w, mu, cov, rf):
     return ret, vol, sharpe
 
 
-def _solve(objective, n, cons=(), max_weight=1.0, x0=None, multistart=False):
+def _solve(objective, n, cons=(), max_weight=1.0, x0=None, multistart=False, jac=None):
+    # Analytic gradients (jac) make SLSQP ~n times cheaper than finite differences
     bounds = [(0.0, max_weight)] * n
-    cons = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0}, *cons]
+    ones = np.ones(n)
+    cons = [{"type": "eq", "fun": lambda w: np.sum(w) - 1.0, "jac": lambda w: ones}, *cons]
     x0 = np.full(n, 1.0 / n) if x0 is None else x0
     best = None
     # a few starting points guard against local minima on flat objectives
     starts = [x0, *(np.eye(n)[: min(n, 4)] * 0.5 + 0.5 / n)] if multistart else [x0]
     for start in starts:
-        r = minimize(objective, start, method="SLSQP", bounds=bounds, constraints=cons,
+        r = minimize(objective, start, jac=jac, method="SLSQP", bounds=bounds, constraints=cons,
                      options={"maxiter": 500, "ftol": 1e-12})
         if r.success and (best is None or r.fun < best.fun):
             best = r
@@ -87,7 +89,7 @@ def _solve(objective, n, cons=(), max_weight=1.0, x0=None, multistart=False):
 
 
 def min_variance(mu, cov, max_weight=1.0):
-    return _solve(lambda w: w @ cov @ w, len(mu), max_weight=max_weight)
+    return _solve(lambda w: w @ cov @ w, len(mu), max_weight=max_weight, jac=lambda w: 2 * cov @ w)
 
 
 def max_sharpe(mu, cov, rf, names, max_weight=1.0):
@@ -99,7 +101,12 @@ def max_sharpe(mu, cov, rf, names, max_weight=1.0):
         v = np.sqrt(max(w @ c @ w, 1e-12))
         return -(w @ m - rf) / v
 
-    wr = _solve(neg_sharpe, len(risky), max_weight=max_weight, multistart=True)
+    def neg_sharpe_grad(w):
+        cw = c @ w
+        v = np.sqrt(max(w @ cw, 1e-12))
+        return -(m * v - (w @ m - rf) * cw / v) / v ** 2
+
+    wr = _solve(neg_sharpe, len(risky), max_weight=max_weight, multistart=True, jac=neg_sharpe_grad)
     w = np.zeros(len(mu))
     w[risky] = wr
     return w
@@ -107,20 +114,23 @@ def max_sharpe(mu, cov, rf, names, max_weight=1.0):
 
 def target_volatility(mu, cov, target, max_weight=1.0):
     n = len(mu)
-    cons = [{"type": "ineq", "fun": lambda w: target ** 2 - w @ cov @ w}]
-    return _solve(lambda w: -(w @ mu), n, cons=cons, max_weight=max_weight, multistart=True)
+    cons = [{"type": "ineq", "fun": lambda w: target ** 2 - w @ cov @ w, "jac": lambda w: -2 * cov @ w}]
+    return _solve(lambda w: -(w @ mu), n, cons=cons, max_weight=max_weight, multistart=True,
+                  jac=lambda w: -mu)
 
 
 def efficient_frontier(mu, cov, rf, points: int = 30, max_weight=1.0):
     w_min = min_variance(mu, cov, max_weight)
     r_lo = float(w_min @ mu)
     # highest achievable return under the weight cap
-    r_hi = float(_solve(lambda w: -(w @ mu), len(mu), max_weight=max_weight) @ mu)
+    r_hi = float(_solve(lambda w: -(w @ mu), len(mu), max_weight=max_weight, jac=lambda w: -mu) @ mu)
     out = []
+    w = w_min
     for target in np.linspace(r_lo, r_hi, points):
-        cons = [{"type": "ineq", "fun": lambda w, t=target: w @ mu - t}]
-        try:
-            w = _solve(lambda w: w @ cov @ w, len(mu), cons=cons, max_weight=max_weight, x0=w_min)
+        cons = [{"type": "ineq", "fun": lambda w, t=target: w @ mu - t, "jac": lambda w: mu}]
+        try:   # warm-start from the previous frontier point: neighbours are close
+            w = _solve(lambda w: w @ cov @ w, len(mu), cons=cons, max_weight=max_weight, x0=w,
+                       jac=lambda w: 2 * cov @ w)
         except RuntimeError:
             continue
         ret, vol, sh = _stats(w, mu, cov, rf)
