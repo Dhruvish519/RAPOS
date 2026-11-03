@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAPOS | Institutional Risk-Aware Intelligence</title>
+    <title>RAPOS | Risk-Aware Portfolio Optimisation</title>
     <link rel="stylesheet" href="s1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="js/rapos-config.js"></script>
@@ -48,39 +48,40 @@
         <div class="animate-fade-in" style="max-width: 1000px; margin: 0 auto;">
             <div style="display:inline-flex; align-items:center; gap:12px; padding:8px 16px; background:var(--slate-100); border-radius:100px; margin-bottom:32px;">
                 <div style="width:8px; height:8px; background:var(--brand-primary); border-radius:50%; box-shadow:0 0 10px var(--brand-primary);"></div>
-                <span style="font-size:11px; font-weight:800; color:var(--slate-600); text-transform:uppercase; letter-spacing:1px;">V3.0 Neural Engine Deployment</span>
+                <span style="font-size:11px; font-weight:800; color:var(--slate-600); text-transform:uppercase; letter-spacing:1px;">Version 3 · Chart Vision + Optimiser</span>
             </div>
             <h1 class="font-heading" style="font-size: 72px; letter-spacing: -3px; line-height: 1; color: var(--slate-900); margin-bottom: 32px;">
                 Risk-Aware Intelligence <br>for the <span style="color:var(--brand-primary);">Modern Investor</span>
             </h1>
             <p style="font-size: 20px; color: var(--slate-500); max-width: 700px; margin: 0 auto 48px; line-height: 1.6;">
-                The first decentralized portfolio terminal powered by quantitative LSTM risk models and institutional-grade rebalancing intelligence.
+                A portfolio web app that measures risk, rebalances with Markowitz mean-variance optimisation, and reads candlestick chart screenshots with OpenCV.
             </p>
             <div style="display: flex; gap: 16px; justify-content: center;">
-                <a href="signup.html" class="btn btn-primary" style="padding: 16px 40px; font-size: 18px;">Deploy Terminal Portfolio</a>
-                <a href="#features" class="btn btn-secondary" style="padding: 16px 40px; font-size: 18px;">System Architecture</a>
+                <a href="signup.html" class="btn btn-primary" style="padding: 16px 40px; font-size: 18px;">Create Account</a>
+                <a href="chart-vision.html" class="btn btn-secondary" style="padding: 16px 40px; font-size: 18px;">Try Chart Vision</a>
             </div>
         </div>
     </section>
 
     <!-- Global Stats -->
     <section style="padding: 60px 5%; border-top: 1px solid var(--slate-100); border-bottom: 1px solid var(--slate-100); background: white;">
+        <p style="text-align:center; font-size: 13px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 24px;">Chart Vision benchmark: synthetic charts with known prices, 13 styles, incl. JPEG and resize</p>
         <div class="stat-group" style="max-width: 1200px; margin: 0 auto;">
             <div style="text-align:center;">
-                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">$3.8B+</div>
-                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Volume Secured</div>
+                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">351</div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Test charts benchmarked</div>
             </div>
             <div style="text-align:center;">
-                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">99.2%</div>
-                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Neural Precision</div>
+                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">0.064%</div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Mean close-price error</div>
             </div>
             <div style="text-align:center;">
-                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">24ms</div>
-                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Compute Latency</div>
+                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">99.7%</div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Price axes read by OCR</div>
             </div>
             <div style="text-align:center;">
-                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">142+</div>
-                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Global Nodes</div>
+                <div style="font-size: 40px; font-weight: 800; color: var(--slate-900); font-family: 'Outfit';">~1.4 s</div>
+                <div style="font-size: 12px; font-weight: 700; color: var(--slate-400); text-transform: uppercase; margin-top: 4px;">Per chart (laptop CPU)</div>
             </div>
         </div>
     </section>
@@ -98,9 +99,9 @@
                     <i class="fas fa-brain"></i>
                 </div>
                 <h3 class="font-heading" style="font-size: 24px; margin-bottom: 16px;">LSTM Prediction Engine</h3>
-                <p style="color: var(--slate-500); line-height: 1.7; margin-bottom: 24px;">Our proprietary neural architecture analyzes sequential time-series data to predict next-day asset close prices with institutional accuracy.</p>
+                <p style="color: var(--slate-500); line-height: 1.7; margin-bottom: 24px;">An LSTM trained on daily price windows gives an experimental next-close signal. It is shown next to a simple “no change” baseline, which it does not beat on random-walk data.</p>
                 <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--brand-primary);">
-                    Explore Neural Node <i class="fas fa-arrow-right"></i>
+                    Experimental signal <i class="fas fa-arrow-right"></i>
                 </div>
             </div>
 
@@ -119,8 +120,8 @@
                 <div style="width: 56px; height: 56px; background: var(--slate-900); color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 24px;">
                     <i class="fas fa-file-contract"></i>
                 </div>
-                <h3 class="font-heading" style="font-size: 24px; margin-bottom: 16px;">Institutional Reporting</h3>
-                <p style="color: var(--slate-500); line-height: 1.7; margin-bottom: 24px;">Generate comprehensive board-ready PDF reports including performance metrics, neural sentiment, and optimization logs in one click.</p>
+                <h3 class="font-heading" style="font-size: 24px; margin-bottom: 16px;">PDF Reports</h3>
+                <p style="color: var(--slate-500); line-height: 1.7; margin-bottom: 24px;">Export a PDF listing your holdings and their current values from the dashboard.</p>
                 <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; color: var(--slate-900);">
                     Sample Terminal Report <i class="fas fa-arrow-right"></i>
                 </div>
@@ -154,7 +155,7 @@
     <section id="workflow" style="padding: 120px 5%; background: white;">
         <div style="text-align: center; max-width: 800px; margin: 0 auto 80px;">
             <h2 class="font-heading" style="font-size: 48px; margin-bottom: 24px;">System Architecture</h2>
-            <p style="color: var(--slate-500); font-size: 18px;">How our node intelligence optimizes your capital.</p>
+            <p style="color: var(--slate-500); font-size: 18px;">How data moves through RAPOS.</p>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 48px; max-width: 1400px; margin: 0 auto; position: relative;">
@@ -164,36 +165,36 @@
             <div style="text-align: center; position: relative; z-index: 1;">
                 <div style="width: 80px; height: 80px; background: white; border: 2px solid var(--brand-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: var(--brand-primary); margin: 0 auto 32px; box-shadow: var(--shadow-soft);">1</div>
                 <h4 class="font-heading" style="font-size: 20px; margin-bottom: 12px;">Data Ingestion</h4>
-                <p style="color: var(--slate-500); font-size: 14px;">Connect your assets via Supabase cloud infrastructure.</p>
+                <p style="color: var(--slate-500); font-size: 14px;">Your holdings are stored per user in Supabase (Postgres with row-level security).</p>
             </div>
 
             <div style="text-align: center; position: relative; z-index: 1;">
                 <div style="width: 80px; height: 80px; background: white; border: 2px solid var(--brand-secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: var(--brand-secondary); margin: 0 auto 32px; box-shadow: var(--shadow-soft);">2</div>
                 <h4 class="font-heading" style="font-size: 20px; margin-bottom: 12px;">Neural Processing</h4>
-                <p style="color: var(--slate-500); font-size: 14px;">LSTM nodes calculate expected returns and market sentiment.</p>
+                <p style="color: var(--slate-500); font-size: 14px;">The FastAPI backend computes returns, volatility and drawdown, plus the LSTM signal.</p>
             </div>
 
             <div style="text-align: center; position: relative; z-index: 1;">
                 <div style="width: 80px; height: 80px; background: white; border: 2px solid var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: var(--success); margin: 0 auto 32px; box-shadow: var(--shadow-soft);">3</div>
                 <h4 class="font-heading" style="font-size: 20px; margin-bottom: 12px;">Risk Optimization</h4>
-                <p style="color: var(--slate-500); font-size: 14px;">Our engine determines the most efficient allocation strategy.</p>
+                <p style="color: var(--slate-500); font-size: 14px;">Mean-variance optimisation finds minimum-risk and maximum-Sharpe weights.</p>
             </div>
 
             <div style="text-align: center; position: relative; z-index: 1;">
                 <div style="width: 80px; height: 80px; background: var(--slate-900); border: 2px solid var(--slate-900); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; color: white; margin: 0 auto 32px; box-shadow: var(--shadow-soft);">4</div>
-                <h4 class="font-heading" style="font-size: 20px; margin-bottom: 12px;">Final Deployment</h4>
-                <p style="color: var(--slate-500); font-size: 14px;">Execute optimized orders and export analytical proof.</p>
+                <h4 class="font-heading" style="font-size: 20px; margin-bottom: 12px;">Review & Export</h4>
+                <p style="color: var(--slate-500); font-size: 14px;">Compare current and target weights and see the trades needed. RAPOS never places orders.</p>
             </div>
         </div>
     </section>
 
     <!-- CTA -->
     <section style="padding: 120px 5%; background: var(--slate-900); color: white; text-align: center;">
-        <h2 class="font-heading" style="font-size: 56px; margin-bottom: 24px; color: white;">Outsmart the Market Today.</h2>
-        <p style="color: var(--slate-400); font-size: 20px; max-width: 700px; margin: 0 auto 48px;">Join thousands of intelligent investors deploying RAPOS nodes to secure their financial future.</p>
+        <h2 class="font-heading" style="font-size: 56px; margin-bottom: 24px; color: white;">Try RAPOS</h2>
+        <p style="color: var(--slate-400); font-size: 20px; max-width: 700px; margin: 0 auto 48px;">Create a free account to save a portfolio, or upload a chart screenshot to Chart Vision without signing in.</p>
         <div style="display: flex; gap: 16px; justify-content: center;">
-            <a href="signup.html" class="btn btn-primary" style="padding: 16px 40px; font-size: 18px;">Start Deploying Nodes</a>
-            <a href="login.html" class="btn btn-secondary" style="padding: 16px 40px; font-size: 18px; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: white;">Log In to Terminal</a>
+            <a href="signup.html" class="btn btn-primary" style="padding: 16px 40px; font-size: 18px;">Create Account</a>
+            <a href="login.html" class="btn btn-secondary" style="padding: 16px 40px; font-size: 18px; background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: white;">Log In</a>
         </div>
     </section>
 
@@ -202,31 +203,27 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 64px; max-width: 1400px; margin: 0 auto 80px;">
             <div>
                 <div class="sidebar-logo" style="padding: 0; margin-bottom: 24px;">RAPOS</div>
-                <p style="color: var(--slate-500); font-size: 14px; line-height: 1.6;">Risk-Aware Portfolio Optimization System. Modular, intelligent, and secure.</p>
+                <p style="color: var(--slate-500); font-size: 14px; line-height: 1.6;">Risk-Aware Portfolio Optimisation System: a student project combining portfolio analytics with computer vision.</p>
             </div>
             <div>
                 <h5 class="font-heading" style="margin-bottom: 24px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Platform</h5>
                 <ul style="list-style:none; display:flex; flex-direction:column; gap:12px;">
-                    <li><a href="dashboard.html" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Terminal Access</a></li>
-                    <li><a href="#" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Neural Nodes</a></li>
-                    <li><a href="#" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Security Audit</a></li>
+                    <li><a href="dashboard.html" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Dashboard</a></li>
+                    <li><a href="chart-vision.html" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Chart Vision</a></li>
+                    <li><a href="optimizer.html" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Portfolio Optimiser</a></li>
                 </ul>
             </div>
             <div>
-                <h5 class="font-heading" style="margin-bottom: 24px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Network</h5>
+                <h5 class="font-heading" style="margin-bottom: 24px; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Developers</h5>
                 <ul style="list-style:none; display:flex; flex-direction:column; gap:12px;">
-                    <li><a href="#" style="text-decoration:none; color:var(--slate-500); font-size:14px;">API Reference</a></li>
-                    <li><a href="#" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Documentation</a></li>
-                    <li><a href="#" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Alpha Access</a></li>
+                    <li><a href="https://rapos-api.onrender.com/docs" target="_blank" rel="noopener" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Backend API (Swagger)</a></li>
+                    <li><a href="API_REFERENCE.html" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Frontend JS Reference</a></li>
+                    <li><a href="https://github.com/Dhruvish519/RAPOS" target="_blank" rel="noopener" style="text-decoration:none; color:var(--slate-500); font-size:14px;">Source on GitHub</a></li>
                 </ul>
             </div>
         </div>
         <div style="border-top: 1px solid var(--slate-100); padding-top: 40px; display: flex; justify-content: space-between; align-items: center; color: var(--slate-400); font-size: 12px; font-weight: 600;">
-            <div>┬⌐ 2026 RAPOS QUANTITATIVE LABS. ALL RIGHTS RESERVED.</div>
-            <div style="display:flex; gap:32px;">
-                <a href="#" style="text-decoration:none; color:inherit;">PRIVACY PROTOCOL</a>
-                <a href="#" style="text-decoration:none; color:inherit;">SERVICE TERMS</a>
-            </div>
+            <div>&copy; 2026 RAPOS</div>
         </div>
     </footer>
 
